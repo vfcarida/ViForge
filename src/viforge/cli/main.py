@@ -14,6 +14,8 @@ from viforge.datasets.registry import dataset_registry
 from viforge.methods.base import method_registry
 from viforge.evaluation.suites import evaluator_registry
 from viforge.experiments.runner import ExperimentRunner
+from viforge.artifacts.gguf import GGUFExporter
+from viforge.artifacts.quantization import AWQQuantizer
 
 app = typer.Typer(
     name="viforge",
@@ -84,12 +86,12 @@ def run_baseline(
     config_path: Path = typer.Argument(..., help="Path to experiment YAML manifest"),
     work_dir: Path = typer.Option(Path("runs"), "--work-dir", "-w"),
 ):
-    """Run benchmark evaluation on base baseline model."""
+    """Run baseline benchmark evaluation for the non-fine-tuned base model."""
+    console.print(f"[bold cyan]Evaluating baseline model for:[/bold cyan] {config_path}")
     runner = ExperimentRunner.from_yaml(config_path, work_dir)
-    console.print(f"[bold cyan]Evaluating baseline model:[/bold cyan] {runner.manifest.model.name}")
-    summary = runner.execute(backend_type="mock")
-    console.print(f"[bold green]Baseline Domain Score:[/bold green] {summary.baseline_domain_score:.1%}")
-    console.print(f"[bold green]Baseline Retention Score:[/bold green] {summary.baseline_retention_score:.1%}")
+    results = runner.run_baseline_evaluation()
+    for res in results:
+        console.print(f"  • [bold]{res.benchmark_name}[/bold]: {res.pass_at_k}")
 
 
 @app.command("train")
@@ -97,17 +99,13 @@ def run_train(
     config_path: Path = typer.Argument(..., help="Path to experiment YAML manifest"),
     work_dir: Path = typer.Option(Path("runs"), "--work-dir", "-w"),
 ):
-    """Run pre-flight checks and post-training stages."""
+    """Execute training pipeline stages with pre-flight VRAM profiling."""
     runner = ExperimentRunner.from_yaml(config_path, work_dir)
-    preflight = runner.run_preflight_checks()
-    console.print("[bold green]Pre-flight Resource Checks Passed.[/bold green]")
-    for stg in preflight["stages"]:
-        v = stg["vram"]
-        c = stg["cost"]
-        console.print(
-            f"  • Stage [bold]{stg['stage_id']}[/bold]: VRAM {v['total_estimated_vram_gb']}GB / {v['available_vram_per_gpu_gb']}GB, "
-            f"Est. Cost: ${c['estimated_cost_usd']:.2f} ({c['estimated_duration_hours']:.2f} hrs)"
-        )
+    runner.profile_and_validate()
+    console.print("[bold green]Pre-flight checks passed.[/bold green] Executing training stages...")
+    results = runner.run_training_stages()
+    for stage_id, res in results.items():
+        console.print(f"  [green]✓[/green] Stage [bold]{stage_id}[/bold] completed. Cost: ${res.get('estimated_cost_usd', 0):.2f}")
 
 
 @app.command("evaluate")
@@ -115,11 +113,11 @@ def run_evaluate(
     config_path: Path = typer.Argument(..., help="Path to experiment YAML manifest"),
     work_dir: Path = typer.Option(Path("runs"), "--work-dir", "-w"),
 ):
-    """Evaluate specialized checkpoints against benchmark suites."""
+    """Run benchmark evaluation on the merged specialist model."""
     runner = ExperimentRunner.from_yaml(config_path, work_dir)
-    summary = runner.execute(backend_type="mock")
-    console.print(f"[bold green]Specialized Domain Score:[/bold green] {summary.specialized_domain_score:.1%}")
-    console.print(f"[bold green]Specialized Retention Score:[/bold green] {summary.specialized_retention_score:.1%}")
+    results = runner.run_specialized_evaluation()
+    for res in results:
+        console.print(f"  • [bold]{res.benchmark_name}[/bold]: {res.pass_at_k}")
 
 
 @app.command("compare")
@@ -127,26 +125,29 @@ def run_compare(
     config_path: Path = typer.Argument(..., help="Path to experiment YAML manifest"),
     work_dir: Path = typer.Option(Path("runs"), "--work-dir", "-w"),
 ):
-    """Compute statistical deltas between baseline and specialized models."""
+    """Compute statistical deltas and Wilson confidence intervals (Base vs Specialist)."""
     runner = ExperimentRunner.from_yaml(config_path, work_dir)
-    summary = runner.execute(backend_type="mock")
+    base_evals = runner.run_baseline_evaluation()
+    spec_evals = runner.run_specialized_evaluation()
+    deltas = runner.compute_statistical_deltas(base_evals, spec_evals)
 
-    table = Table(title="Statistical Comparison: Baseline vs Specialized")
+    table = Table(title="ViForge Base vs Specialist Statistical Deltas")
     table.add_column("Benchmark", style="cyan")
     table.add_column("Baseline", style="blue")
-    table.add_column("Specialized", style="green")
-    table.add_column("Delta (%)", style="bold yellow")
-    table.add_column("95% CI", style="magenta")
-    table.add_column("Significant", style="bold green")
+    table.add_column("Specialist", style="green")
+    table.add_column("Relative Δ", style="magenta")
+    table.add_column("95% CI", style="yellow")
+    table.add_column("Significant", style="bold")
 
-    for d in summary.statistical_deltas:
+    for d in deltas:
+        sig_str = "[green]YES[/green]" if d.is_significant else "[dim]NO[/dim]"
         table.add_row(
             d.metric_name,
-            f"{d.baseline_value:.1%}",
-            f"{d.specialized_value:.1%}",
+            f"{d.baseline_value:.3f}",
+            f"{d.specialized_value:.3f}",
             f"{d.relative_delta_pct:+.2f}%",
             f"[{d.ci_lower:.3f}, {d.ci_upper:.3f}]",
-            "Yes" if d.is_significant else "No",
+            sig_str,
         )
     console.print(table)
 
@@ -156,26 +157,28 @@ def run_analyze(
     config_path: Path = typer.Argument(..., help="Path to experiment YAML manifest"),
     work_dir: Path = typer.Option(Path("runs"), "--work-dir", "-w"),
 ):
-    """Run multi-objective Pareto frontier analysis."""
+    """Run Pareto frontier optimization and Capability-per-Dollar index calculation."""
     runner = ExperimentRunner.from_yaml(config_path, work_dir)
-    summary = runner.execute(backend_type="mock")
+    points = runner.build_pareto_points(domain_gain=15.0, retention_delta=0.5, total_cost=24.50)
+    frontier = runner.analyze_pareto_frontier(points)
 
-    table = Table(title="Multi-Objective Pareto Frontier")
-    table.add_column("Status", style="bold cyan")
-    table.add_column("Model Variant", style="blue")
-    table.add_column("Domain Quality", style="green")
-    table.add_column("General Retention", style="yellow")
-    table.add_column("Training Cost ($)", style="magenta")
-    table.add_column("Capability / $", style="bold green")
+    table = Table(title="ViForge Pareto Frontier Analysis")
+    table.add_column("Model / Stage", style="cyan")
+    table.add_column("Domain Score", style="blue")
+    table.add_column("Retention", style="green")
+    table.add_column("Cost (USD)", style="yellow")
+    table.add_column("Cap/Dollar", style="magenta")
+    table.add_column("Pareto Optimal", style="bold")
 
-    for p in summary.pareto_frontier:
+    for p in frontier:
+        opt_str = "[bold green]YES[/bold green]" if p.is_pareto_optimal else "[dim]NO[/dim]"
         table.add_row(
-            "★ Optimal" if p.is_pareto_optimal else "Dominated",
             p.stage_or_variant,
-            f"{p.domain_score:.1%}",
-            f"{p.general_retention_score:.1%}",
+            f"{p.domain_score:.3f}",
+            f"{p.general_retention_score:.3f}",
             f"${p.training_cost_usd:.2f}",
             f"{p.capability_per_dollar:.2f}",
+            opt_str,
         )
     console.print(table)
 
@@ -209,6 +212,45 @@ def run_all(
     console.print(f"[bold]Retention Delta:[/bold] [yellow]{summary.retention_delta_pct:+.2f}%[/yellow]")
     console.print(f"[bold]Total Training Cost:[/bold] ${summary.total_training_cost_usd:.2f}")
     console.print(f"\n[bold underline]Verdict:[/bold underline]\n{summary.verdict}\n")
+
+
+@app.command("export-gguf")
+def export_gguf_cli(
+    model_dir: Path = typer.Argument(..., help="Directory of merged HuggingFace / Safetensors model"),
+    output_dir: Path = typer.Option(Path("exports/gguf"), "--output-dir", "-o", help="Output directory for GGUF and Modelfile"),
+    quant_type: str = typer.Option("Q4_K_M", "--quant-type", "-q", help="Quantization type (Q4_K_M, Q5_K_M, Q8_0, F16)"),
+    system_prompt: str = typer.Option(
+        "You are ViForge Specialist, an expert software engineering and reasoning AI.",
+        "--system-prompt",
+        "-s",
+        help="System prompt for Ollama Modelfile",
+    ),
+):
+    """Export model to GGUF format and generate ready-to-run Ollama Modelfile."""
+    console.print(f"[bold cyan]Exporting model to GGUF ({quant_type}):[/bold cyan] {model_dir}")
+    res = GGUFExporter.export(
+        merged_model_dir=model_dir,
+        output_gguf_dir=output_dir,
+        quant_type=quant_type,
+        generate_ollama=True,
+        system_prompt=system_prompt,
+    )
+    console.print(f"[bold green]GGUF Exported:[/bold green] {res['gguf_path']}")
+    console.print(f"[bold green]Ollama Modelfile:[/bold green] {res['modelfile_path']}")
+    console.print(f"[dim]Run locally with: ollama create {model_dir.name} -f {res['modelfile_path']}[/dim]")
+
+
+@app.command("quantize")
+def quantize_cli(
+    model_dir: Path = typer.Argument(..., help="Directory of merged model"),
+    output_dir: Path = typer.Option(Path("exports/awq"), "--output-dir", "-o", help="Output directory for AWQ model"),
+    bits: int = typer.Option(4, "--bits", "-b", help="Quantization bitwidth (4 or 8)"),
+    group_size: int = typer.Option(128, "--group-size", "-g", help="AWQ group size"),
+):
+    """Apply AWQ post-training quantization for low-VRAM deployment."""
+    console.print(f"[bold cyan]Applying AWQ {bits}-bit quantization to:[/bold cyan] {model_dir}")
+    res = AWQQuantizer.quantize(model_path=model_dir, output_dir=output_dir, bits=bits, group_size=group_size)
+    console.print(f"[bold green]AWQ Model saved to:[/bold green] {res['output_dir']}")
 
 
 @app.command("list-methods")

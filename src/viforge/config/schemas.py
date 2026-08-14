@@ -1,25 +1,23 @@
 """
-ViForge Pydantic v2 Configuration Schemas & Data Contracts.
+ViForge Pydantic v2 Configuration Schemas and Validation Models.
 """
 
-from __future__ import annotations
 from datetime import datetime, timezone
 from enum import Enum
-from typing import Any, Dict, List, Literal, Optional
+from typing import Any, Dict, List, Optional, Literal
 from pydantic import BaseModel, Field
 
 
 class ModelType(str, Enum):
     CAUSAL_LM = "causal_lm"
+    SEQ2SEQ_LM = "seq2seq_lm"
     MOE = "moe"
-    ENCODER_DECODER = "encoder_decoder"
 
 
 class TrainingMethodType(str, Enum):
     SFT = "sft"
     LORA = "lora"
     QLORA = "qlora"
-    FULL_FT = "full_ft"
     CPT = "cpt"
     DPO = "dpo"
     KTO = "kto"
@@ -29,9 +27,14 @@ class TrainingMethodType(str, Enum):
 
 class QuantizationType(str, Enum):
     NONE = "none"
+    BITS_4 = "4bit"
+    BITS_8 = "8bit"
+    INT8 = "int8"
+    INT4 = "int4"
     NF4 = "nf4"
     FP4 = "fp4"
-    INT8 = "int8"
+    AWQ = "awq"
+    GPTQ = "gptq"
 
 
 class ComputeDtype(str, Enum):
@@ -98,6 +101,8 @@ class HyperparametersConfig(BaseModel):
     gradient_checkpointing: bool = Field(True)
     weight_decay: float = Field(0.01, ge=0.0)
     optimizer: str = Field("paged_adamw_8bit")
+    use_liger_kernel: bool = Field(False, description="Enable Triton-fused Liger-Kernel")
+    attn_implementation: Optional[str] = Field("sdpa", description="Attention mode ('flash_attention_2', 'sdpa', 'eager')")
 
     # PEFT / LoRA / QLoRA
     quantization: QuantizationType = Field(QuantizationType.NONE)
@@ -163,8 +168,10 @@ class CostTrackingConfig(BaseModel):
     storage_gb_month_usd: float = Field(0.023, ge=0.0)
     log_to_mlflow: bool = Field(False)
     log_to_wandb: bool = Field(False)
+    log_to_tensorboard: bool = Field(False)
     log_to_cloudwatch: bool = Field(False)
     mlflow_experiment_name: str = Field("ViForge_Specialization")
+    wandb_project: str = Field("viforge-specialization")
 
 
 class ExperimentManifest(BaseModel):

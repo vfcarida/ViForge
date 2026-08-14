@@ -64,11 +64,13 @@ venv.bak/
 
 # ViForge Runtime & Experiment Artifacts
 runs/
+exports/
 checkpoints/
 *.safetensors
 *.bin
 *.pt
 *.pth
+*.gguf
 
 # IDEs
 .vscode/
