@@ -4,7 +4,7 @@ ViForge End-to-End Experiment Campaign Runner.
 
 from pathlib import Path
 import time
-from typing import Dict, Any, Optional
+from typing import Dict, Any
 from viforge.config.schemas import (
     ExperimentManifest,
     ExperimentSummaryReport,

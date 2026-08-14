@@ -4,7 +4,6 @@ ViForge SWE-bench Lite, MBPP+, and LiveCodeBench Evaluation Suite Plugins.
 
 import time
 from pathlib import Path
-from typing import Dict, List
 from viforge.config.schemas import BenchmarkResult, SamplingParams
 from viforge.inference.backends import BaseInferenceBackend
 from viforge.utils.logging import logger

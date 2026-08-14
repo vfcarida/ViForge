@@ -6,7 +6,6 @@ import tempfile
 from pathlib import Path
 from viforge.methods.synthetic import SyntheticDataPipeline
 from viforge.datasets.manifest import ManifestManager
-from viforge.artifacts.merger import AdapterMerger
 
 
 def test_synthetic_data_pipeline_integration():

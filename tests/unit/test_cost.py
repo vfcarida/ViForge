@@ -60,5 +60,18 @@ def test_statistical_metrics():
     assert 0.70 < low < 0.80
     assert 0.80 < high < 0.90
 
+    # Boundary conditions
+    low_0, high_0 = wilson_score_interval(0, 0)
+    assert low_0 == 0.0 and high_0 == 0.0
+
+    low_zero, high_zero = wilson_score_interval(0, 10)
+    assert low_zero == 0.0 and high_zero > 0.0
+
+    low_full, high_full = wilson_score_interval(10, 10)
+    assert low_full < 1.0 and high_full == 1.0
+
     rel_delta = compute_relative_delta(0.50, 0.75)
     assert rel_delta == 50.0
+
+    rel_delta_zero = compute_relative_delta(0.0, 0.50)
+    assert rel_delta_zero == 100.0

@@ -4,7 +4,7 @@ ViForge Artifact Manager: manages checkpoints, manifests, and adapter registries
 
 import json
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any, Dict
 from viforge.utils.logging import logger
 
 

@@ -4,7 +4,7 @@ ViForge Dataset Governance Manifest Generator & Integrity Validator.
 
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Dict, List, Literal
+from typing import Literal
 from viforge.config.schemas import DatasetGovernanceManifest
 from viforge.utils.hashing import compute_file_sha256
 from viforge.utils.logging import logger

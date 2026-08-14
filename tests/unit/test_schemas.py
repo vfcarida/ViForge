@@ -2,8 +2,6 @@
 Unit tests for ViForge Pydantic v2 schemas and validation contracts.
 """
 
-from pathlib import Path
-import pytest
 from viforge.config.schemas import (
     ModelConfig,
     ModelType,

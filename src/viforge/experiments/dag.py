@@ -2,7 +2,7 @@
 ViForge Experiment Stage DAG Resolver.
 """
 
-from typing import Dict, List
+from typing import List
 from viforge.config.schemas import TrainingStageConfig
 
 

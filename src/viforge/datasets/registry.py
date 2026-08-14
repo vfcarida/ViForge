@@ -3,9 +3,7 @@ ViForge Dataset Registry: manages registered datasets and governance manifests.
 """
 
 from typing import Dict, List, Optional
-from pathlib import Path
 from viforge.config.schemas import DatasetGovernanceManifest
-from viforge.datasets.manifest import ManifestManager
 from viforge.utils.logging import logger
 
 

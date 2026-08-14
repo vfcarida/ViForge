@@ -4,7 +4,6 @@ ViForge HumanEval+ Evaluation Suite Plugin.
 
 import time
 from pathlib import Path
-from typing import Dict, List
 from viforge.config.schemas import BenchmarkResult, SamplingParams
 from viforge.inference.backends import BaseInferenceBackend
 from viforge.security.sandbox import ExecutionSandbox

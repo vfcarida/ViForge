@@ -4,7 +4,7 @@ ViForge Dataset Ingestion Adapters (Local JSONL/Parquet, HuggingFace, Git).
 
 import json
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List
 import pandas as pd
 from viforge.utils.logging import logger
 

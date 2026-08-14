@@ -2,10 +2,9 @@
 ViForge Base vs Specialist Metric Comparison Engine.
 """
 
-from typing import Dict, List
+from typing import List
 from viforge.config.schemas import BenchmarkResult, StatisticalDelta
 from viforge.metrics.statistical import compute_relative_delta, wilson_score_interval
-from viforge.utils.logging import logger
 
 
 class MetricComparator:

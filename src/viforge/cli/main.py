@@ -2,9 +2,7 @@
 ViForge Production CLI: End-to-End Specialization & Pareto Evaluation Platform.
 """
 
-import json
 from pathlib import Path
-from typing import Optional
 import typer
 from rich.console import Console
 from rich.table import Table
@@ -12,7 +10,6 @@ from rich.panel import Panel
 
 from viforge.utils.doctor import SystemDoctor
 from viforge.config.loader import ConfigLoader
-from viforge.models.registry import model_registry
 from viforge.datasets.registry import dataset_registry
 from viforge.methods.base import method_registry
 from viforge.evaluation.suites import evaluator_registry

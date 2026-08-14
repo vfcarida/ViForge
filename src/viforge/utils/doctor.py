@@ -5,9 +5,8 @@ ViForge System Diagnostics & Environment Inspector (`viforge doctor`).
 import sys
 import os
 import shutil
-from typing import Dict, Any, List
+from typing import Dict, Any
 import psutil
-from viforge.utils.logging import logger
 
 
 class SystemDoctor:

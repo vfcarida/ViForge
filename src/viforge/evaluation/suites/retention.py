@@ -4,7 +4,6 @@ ViForge Generalist Capability Retention Benchmark Suites (MMLU-Pro, GSM8K, ARC-C
 
 import time
 from pathlib import Path
-from typing import Dict, List
 from viforge.config.schemas import BenchmarkResult, SamplingParams
 from viforge.inference.backends import BaseInferenceBackend
 from viforge.utils.logging import logger

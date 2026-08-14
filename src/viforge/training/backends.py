@@ -2,7 +2,7 @@
 ViForge Compute Acceleration Backends (Accelerate, FSDP, DeepSpeed).
 """
 
-from typing import Any, Dict, Optional
+from typing import Any, Dict
 from viforge.config.schemas import HardwareConfig
 from viforge.utils.logging import logger
 

@@ -2,7 +2,7 @@
 ViForge Model Registry: manages known base models, licenses, and architecture parameters.
 """
 
-from typing import Dict, List, Optional
+from typing import Dict, List
 from viforge.config.schemas import ModelConfig, ModelType, BasePricingConfig
 from viforge.models.adapters import HuggingFaceModelAdapter
 from viforge.utils.logging import logger

@@ -3,7 +3,6 @@ ViForge AWS S3 Artifact Synchronizer.
 """
 
 from pathlib import Path
-from typing import Optional
 from viforge.utils.logging import logger
 
 

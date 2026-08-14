@@ -4,7 +4,6 @@ ViForge Training Telemetry, Checkpointing, and Callbacks.
 
 import json
 from pathlib import Path
-from typing import Any, Dict, Optional
 from viforge.config.schemas import StageMetrics
 from viforge.utils.logging import logger
 

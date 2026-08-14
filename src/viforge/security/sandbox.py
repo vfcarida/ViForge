@@ -9,7 +9,16 @@ import tempfile
 import time
 from pathlib import Path
 from typing import Dict, Any, Optional
-from viforge.utils.logging import logger
+
+
+class SandboxExecutionError(Exception):
+    """Raised when sandbox execution encounters an unexpected error."""
+    pass
+
+
+class SandboxTimeoutError(SandboxExecutionError):
+    """Raised when sandbox execution exceeds its allotted time limit."""
+    pass
 
 
 class ExecutionSandbox:
@@ -77,7 +86,7 @@ class ExecutionSandbox:
                     "passed": False,
                     "returncode": -1,
                     "stdout": "",
-                    "stderr": str(e),
+                    "stderr": f"Sandbox error: {type(e).__name__} - {str(e)}",
                     "timeout": False,
                     "execution_time_seconds": round(elapsed, 3),
                 }

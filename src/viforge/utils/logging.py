@@ -5,7 +5,7 @@ ViForge Structured and Rich Logging Utilities.
 import json
 import logging
 import sys
-from typing import Any, Dict, Optional
+from typing import Any, Dict
 from rich.console import Console
 from rich.logging import RichHandler
 
