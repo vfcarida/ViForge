@@ -1,0 +1,30 @@
+models:
+  - name: "DeepSeek V4 Pro"
+    hf_hub_id: "deepseek-ai/deepseek-v4-pro"
+    revision: "main"
+    total_parameters: 14.5
+    context_window: 8192
+    expected_license: "MIT"
+    pricing:
+      prompt_usd_per_1m: 0.14
+      completion_usd_per_1m: 0.28
+
+  - name: "DeepSeek Coder 6.7B"
+    hf_hub_id: "deepseek-ai/deepseek-coder-6.7b-instruct"
+    revision: "main"
+    total_parameters: 6.7
+    context_window: 16384
+    expected_license: "deepseek-license"
+    pricing:
+      prompt_usd_per_1m: 0.10
+      completion_usd_per_1m: 0.20
+
+  - name: "Qwen 2.5 Coder 7B"
+    hf_hub_id: "Qwen/Qwen2.5-Coder-7B"
+    revision: "main"
+    total_parameters: 7.6
+    context_window: 32768
+    expected_license: "Apache-2.0"
+    pricing:
+      prompt_usd_per_1m: 0.12
+      completion_usd_per_1m: 0.24

@@ -1,0 +1,20 @@
+name: "DeepSeek V4 Pro"
+hf_hub_id: "deepseek-ai/deepseek-v4-pro"
+revision: "main"
+model_type: "causal_lm"
+total_parameters: 14.5
+active_parameters: 14.5
+context_window: 8192
+target_modules:
+  - "q_proj"
+  - "k_proj"
+  - "v_proj"
+  - "o_proj"
+  - "gate_proj"
+  - "up_proj"
+  - "down_proj"
+expected_license: "MIT"
+pricing:
+  prompt_usd_per_1m: 0.14
+  completion_usd_per_1m: 0.28
+trust_remote_code: false

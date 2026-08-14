@@ -1,0 +1,6 @@
+method:
+  type: "grpo"
+  learning_rate: 1.0e-5
+  num_generations: 4
+  max_prompt_len: 2048
+  max_completion_len: 2048

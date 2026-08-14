@@ -1,0 +1,28 @@
+name: ViForge GPU Benchmark Runner
+
+on:
+  workflow_dispatch:
+    inputs:
+      experiment_manifest:
+        description: "Path to experiment manifest"
+        required: true
+        default: "configs/experiments/exp_002_deepseek_v4_pro_qlora_sft.yaml"
+
+jobs:
+  gpu-specialization:
+    runs-on: [self-hosted, gpu, a100]
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Environment
+        run: |
+          pip install -e .[all]
+
+      - name: Pre-flight VRAM Validation
+        run: |
+          viforge train ${{ github.event.inputs.experiment_manifest }}
+
+      - name: Execute Specialization Campaign
+        run: |
+          viforge run ${{ github.event.inputs.experiment_manifest }} --live

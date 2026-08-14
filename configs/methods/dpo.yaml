@@ -1,0 +1,8 @@
+method:
+  type: "dpo"
+  beta: 0.1
+  learning_rate: 5.0e-6
+  lr_scheduler: "cosine"
+  num_epochs: 1
+  max_prompt_len: 2048
+  max_completion_len: 2048

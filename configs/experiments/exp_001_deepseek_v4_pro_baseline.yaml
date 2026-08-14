@@ -1,0 +1,62 @@
+schema_version: "2.0"
+experiment_id: "exp_001_deepseek_v4_pro_baseline"
+tags: ["deepseek_v4_pro", "baseline", "zero_shot", "software_engineering"]
+
+model:
+  name: "DeepSeek V4 Pro"
+  hf_hub_id: "deepseek-ai/deepseek-v4-pro"
+  revision: "main"
+  model_type: "causal_lm"
+  total_parameters: 14.5
+  context_window: 8192
+  expected_license: "MIT"
+  pricing:
+    prompt_usd_per_1m: 0.14
+    completion_usd_per_1m: 0.28
+  trust_remote_code: false
+
+hardware:
+  accelerator: "NVIDIA_A100_80GB"
+  num_gpus: 1
+  vram_per_gpu_gb: 80.0
+  compute_dtype: "bfloat16"
+  enable_flash_attention_2: true
+
+pipeline:
+  - stage_id: "stage_0_baseline"
+    method: "qlora"
+    dataset:
+      id: "viforge-se-eval-only"
+      path: "data/eval.parquet"
+      split: "test"
+    hyperparameters:
+      quantization: "nf4"
+      lora_rank: 16
+      learning_rate: 1.0e-4
+      num_epochs: 1
+      max_seq_len: 4096
+
+evaluation:
+  sampling:
+    temperature: 0.0
+    top_p: 1.0
+    max_new_tokens: 2048
+    seed: 42
+  domain_benchmarks:
+    - name: "humaneval_plus"
+      pass_k: [1]
+      timeout_seconds: 15
+    - name: "swe_bench_lite"
+      pass_k: [1]
+      timeout_seconds: 60
+  general_retention_benchmarks:
+    - name: "mmlu_pro"
+      pass_k: [1]
+      timeout_seconds: 15
+    - name: "gsm8k"
+      pass_k: [1]
+      timeout_seconds: 15
+
+cost_tracking:
+  ec2_hourly_rate_usd: 7.40
+  log_to_mlflow: false

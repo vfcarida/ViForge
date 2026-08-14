@@ -1,0 +1,79 @@
+schema_version: "2.0"
+experiment_id: "exp_002_deepseek_v4_pro_qlora_sft"
+tags: ["deepseek_v4_pro", "qlora", "sft", "software_engineering"]
+
+model:
+  name: "DeepSeek V4 Pro"
+  hf_hub_id: "deepseek-ai/deepseek-v4-pro"
+  revision: "main"
+  model_type: "causal_lm"
+  total_parameters: 14.5
+  context_window: 8192
+  expected_license: "MIT"
+  pricing:
+    prompt_usd_per_1m: 0.14
+    completion_usd_per_1m: 0.28
+  trust_remote_code: false
+
+hardware:
+  accelerator: "NVIDIA_A100_80GB"
+  num_gpus: 1
+  vram_per_gpu_gb: 80.0
+  compute_dtype: "bfloat16"
+  enable_flash_attention_2: true
+
+pipeline:
+  - stage_id: "stage_1_qlora_sft"
+    method: "qlora"
+    dataset:
+      id: "viforge-se-instruct-python"
+      path: "data/train.parquet"
+      split: "train"
+    hyperparameters:
+      quantization: "nf4"
+      double_quant: true
+      lora_rank: 64
+      lora_alpha: 128
+      lora_dropout: 0.05
+      target_modules:
+        - "q_proj"
+        - "k_proj"
+        - "v_proj"
+        - "o_proj"
+        - "gate_proj"
+        - "up_proj"
+        - "down_proj"
+      learning_rate: 2.0e-4
+      lr_scheduler: "cosine"
+      warmup_ratio: 0.03
+      num_epochs: 3
+      max_seq_len: 4096
+      per_device_batch_size: 4
+      gradient_accumulation_steps: 4
+      gradient_checkpointing: true
+      optimizer: "paged_adamw_8bit"
+
+evaluation:
+  sampling:
+    temperature: 0.0
+    top_p: 1.0
+    max_new_tokens: 2048
+    seed: 42
+  domain_benchmarks:
+    - name: "humaneval_plus"
+      pass_k: [1]
+      timeout_seconds: 15
+    - name: "swe_bench_lite"
+      pass_k: [1]
+      timeout_seconds: 60
+  general_retention_benchmarks:
+    - name: "mmlu_pro"
+      pass_k: [1]
+      timeout_seconds: 15
+    - name: "gsm8k"
+      pass_k: [1]
+      timeout_seconds: 15
+
+cost_tracking:
+  ec2_hourly_rate_usd: 7.40
+  log_to_mlflow: false

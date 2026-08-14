@@ -1,0 +1,173 @@
+Metadata-Version: 2.4
+Name: viforge
+Version: 0.1.0
+Summary: ViForge: Forging Small Models into Domain Specialists — A Systematic Post-Training & Evaluation Framework
+Author-email: ViForge Authors <research@viforge.ai>
+License: MIT
+Classifier: Development Status :: 4 - Beta
+Classifier: Intended Audience :: Science/Research
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Programming Language :: Python :: 3.12
+Classifier: Topic :: Scientific/Engineering :: Artificial Intelligence
+Requires-Python: >=3.10
+Description-Content-Type: text/markdown
+License-File: LICENSE
+Requires-Dist: torch>=2.2.0
+Requires-Dist: transformers>=4.40.0
+Requires-Dist: peft>=0.10.0
+Requires-Dist: trl>=0.8.0
+Requires-Dist: safetensors>=0.4.0
+Requires-Dist: pydantic>=2.7.0
+Requires-Dist: pydantic-settings>=2.2.0
+Requires-Dist: pyyaml>=6.0
+Requires-Dist: rich>=13.7.0
+Requires-Dist: typer>=0.12.0
+Requires-Dist: numpy>=1.26.0
+Requires-Dist: pandas>=2.2.0
+Requires-Dist: pyarrow>=15.0.0
+Requires-Dist: xxhash>=3.4.0
+Requires-Dist: scipy>=1.12.0
+Requires-Dist: requests>=2.31.0
+Requires-Dist: psutil>=5.9.0
+Requires-Dist: tqdm>=4.66.0
+Provides-Extra: dev
+Requires-Dist: pytest>=8.0.0; extra == "dev"
+Requires-Dist: pytest-cov>=5.0.0; extra == "dev"
+Requires-Dist: pytest-mock>=3.14.0; extra == "dev"
+Requires-Dist: ruff>=0.4.0; extra == "dev"
+Requires-Dist: mypy>=1.10.0; extra == "dev"
+Provides-Extra: aws
+Requires-Dist: boto3>=1.34.0; extra == "aws"
+Requires-Dist: sagemaker>=2.210.0; extra == "aws"
+Provides-Extra: inference
+Requires-Dist: vllm>=0.4.0; sys_platform != "win32" and extra == "inference"
+Requires-Dist: litellm>=1.35.0; extra == "inference"
+Provides-Extra: all
+Requires-Dist: viforge[aws,dev,inference]; extra == "all"
+Dynamic: license-file
+
+# ViForge — Forging Small Models into Specialists
+
+> **ViForge** is an open-source, modular post-training experimentation framework designed to systematically specialize cost-efficient base language models into high-performing domain experts (starting with **DeepSeek V4 Pro** in **Software Engineering**).
+
+---
+
+## 1. The Core Research Hypothesis
+
+> **"Can specialization improve the software-engineering capability of a cost-efficient model enough to make it a better capability-per-dollar choice than larger frontier alternatives?"**
+
+ViForge enforces rigorous empirical Pareto-optimality analysis across:
+$$\text{Capability-per-Dollar} = \frac{\Delta \mathcal{S}_{\text{domain}} - \lambda \cdot \max(0, -\Delta \mathcal{S}_{\text{general}})}{\mathcal{C}_{\text{train}} + \mathcal{C}_{\text{infer}}(N_{\text{tokens}})}$$
+
+```text
+GENERALIST MODEL (e.g. DeepSeek V4 Pro)
+       │
+       ▼
+   DATA / TASK SPECIFICATION
+       │
+       ▼
+ ┌────────────────────────────────────────┐
+ │                ViForge                 │
+ │                                        │
+ │  • SFT (Instruction Tuning)            │
+ │  • LoRA / QLoRA (NF4 4-bit)            │
+ │  • Continual Pretraining (DAPT)        │
+ │  • Preference Alignment (DPO / GRPO)   │
+ │  • Synthetic Teacher Distillation      │
+ │  • Contamination & Security Shield     │
+ └────────────────────────────────────────┘
+       │
+       ▼
+SPECIALIST MODEL
+       │
+       ▼
+QUALITY × RETENTION × COST PARETO EVALUATION
+```
+
+---
+
+## 2. Key Architectural Features
+
+* **Pre-Flight Feasibility & Memory Profiler:** Analytically computes VRAM requirements across weights, gradients, optimizer states, and activations with a 15% safety headroom before allocating GPU infrastructure.
+* **Data Governance & Contamination Shield:** Ingestion manifest tracking (SHA-256, SPDX license, provenance), MinHash LSH deduplication, and 10-gram overlap scanning against test benchmarks (HumanEval+, MBPP+, LiveCodeBench, SWE-bench).
+* **Multi-Stage Specialization Taxonomy:** First-class support for SFT, PEFT/LoRA, QLoRA, Continued Pretraining (CPT/DAPT), DPO, and GRPO (test-driven verifiable rewards).
+* **Isolated Execution Sandbox:** Sandboxed code execution harness with strict memory caps, timeouts, and zero-network isolation.
+* **Economic & Pareto Frontier Engine:** Multi-objective optimization quantifying domain gain ($\Delta \mathcal{S}_{\text{domain}}$), general capability retention ($\Delta \mathcal{S}_{\text{general}}$), and dollar cost ($).
+
+---
+
+## 3. Quickstart & Installation
+
+```bash
+# Clone and install ViForge in editable mode
+git clone https://github.com/vfcarida/ViForge.git
+cd ViForge
+pip install -e .
+```
+
+### CLI Overview
+
+```bash
+# 1. List registered models
+viforge list-models
+
+# 2. List available training methods and benchmark plugins
+viforge list-plugins
+
+# 3. Profile memory and estimated cost before training
+viforge profile configs/experiments/exp_002_deepseek_v4_pro_qlora_sft.yaml
+
+# 4. Run full specialization experiment and evaluation
+viforge run configs/experiments/exp_002_deepseek_v4_pro_qlora_sft.yaml
+```
+
+---
+
+## 4. DeepSeek V4 Pro Reference Experiment Matrix
+
+| Run ID | Model Base | Adaptation Strategy | Hardware | Est. Cost (AWS) | Primary Metric |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| `exp_001` | DeepSeek V4 Pro | **Base Baseline** (Zero-shot) | 1× A100 | \$0.50 | Baseline Pass@1 |
+| `exp_002` | DeepSeek V4 Pro | **QLoRA SFT (NF4 r=64)** | 1× A100 80GB | \$12.00 | $\Delta$ Pass@1 vs Base |
+| `exp_003` | DeepSeek V4 Pro | **CPT + QLoRA + DPO** | 4× A100 80GB | \$166.00 | Multi-stage Compounding |
+
+---
+
+## 5. Repository Structure
+
+```text
+ViForge/
+├── configs/
+│   ├── models/                # Model cards (DeepSeek V4 Pro, Qwen 2.5 Coder, etc.)
+│   └── experiments/           # Declarative experiment manifests (YAML)
+├── viforge/
+│   ├── core/                  # Schemas, interfaces, typed exceptions, structured logging
+│   ├── registry/              # ModelRegistry, DatasetRegistry, PluginManager
+│   ├── data/                  # Deduplication (MinHash), Contamination, Security (TruffleHog)
+│   ├── synthetic/             # Task generation, AST verification, Rejection sampling
+│   ├── training/              # Profilers, SFT, LoRA/QLoRA, CPT, DPO/GRPO, AdapterMerger
+│   ├── inference/             # Unified generation client with seed pinning
+│   ├── evaluation/            # Sandboxed test harness (HumanEval+, MBPP+, SWE-bench, MMLU-Pro)
+│   ├── analysis/              # AWSCostModel, ParetoEngine, ReportGenerator
+│   ├── infra/                 # AWS S3 sync & SageMaker runners
+│   ├── orchestrator.py        # End-to-end experiment pipeline
+│   └── cli.py                 # Typer & Rich CLI
+└── tests/                     # Comprehensive test suite (Unit, Contract, Data, ML Regression)
+```
+
+---
+
+## 6. Running Tests
+
+```bash
+pytest tests/ -v
+```
+
+---
+
+## 7. License
+
+ViForge is released under the **MIT License**.
