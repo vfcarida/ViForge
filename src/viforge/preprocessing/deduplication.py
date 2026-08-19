@@ -18,7 +18,7 @@ class MinHashDeduplicator:
         self.num_perm = num_perm
         self.threshold = jaccard_threshold
         self.ngram_size = ngram_size
-        self.seeds = [xxhash.xxh64(str(i)).intdigest() for i in range(num_perm)]
+        self.seeds = [xxhash.xxh64(str(i).encode("utf-8")).intdigest() for i in range(num_perm)]
 
     def _tokenize(self, text: str) -> List[str]:
         return re.findall(r"\w+|[^\w\s]", text.lower())
