@@ -6,7 +6,9 @@ import math
 from typing import Tuple
 
 
-def wilson_score_interval(successes: int, total: int, confidence: float = 0.95) -> Tuple[float, float]:
+def wilson_score_interval(
+    successes: int, total: int, confidence: float = 0.95
+) -> Tuple[float, float]:
     """
     Computes Wilson score confidence interval for binomial pass rates.
     """

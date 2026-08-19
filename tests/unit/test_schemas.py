@@ -50,9 +50,7 @@ def test_experiment_manifest_roundtrip():
                 ),
             )
         ],
-        evaluation=EvaluationConfig(
-            domain_benchmarks=[BenchmarkItemConfig(name="humaneval_plus")]
-        ),
+        evaluation=EvaluationConfig(domain_benchmarks=[BenchmarkItemConfig(name="humaneval_plus")]),
     )
 
     data = manifest.model_dump()

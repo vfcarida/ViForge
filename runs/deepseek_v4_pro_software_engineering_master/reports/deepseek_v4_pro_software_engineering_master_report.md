@@ -1,8 +1,8 @@
 # ViForge Experiment Report: `deepseek_v4_pro_software_engineering_master`
 
-**Model Base:** `DeepSeek V4 Pro`  
-**Timestamp:** `2026-08-14T18:29:53.823778+00:00`  
-**Total Training Cost:** `$0.00`  
+**Model Base:** `DeepSeek V4 Pro`
+**Timestamp:** `2026-08-14T18:29:53.823778+00:00`
+**Total Training Cost:** `$0.00`
 **Total Wall-Clock Time:** `0.00 hrs`
 
 ---

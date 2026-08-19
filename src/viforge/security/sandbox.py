@@ -13,11 +13,13 @@ from typing import Dict, Any, Optional
 
 class SandboxExecutionError(Exception):
     """Raised when sandbox execution encounters an unexpected error."""
+
     pass
 
 
 class SandboxTimeoutError(SandboxExecutionError):
     """Raised when sandbox execution exceeds its allotted time limit."""
+
     pass
 
 
@@ -50,7 +52,9 @@ class ExecutionSandbox:
                 clean_env = {
                     "PYTHONPATH": "",
                     "PATH": sys.exec_prefix,
-                    "SYSTEMROOT": os.environ.get("SYSTEMROOT", "C:\\Windows") if sys.platform == "win32" else "",
+                    "SYSTEMROOT": os.environ.get("SYSTEMROOT", "C:\\Windows")
+                    if sys.platform == "win32"
+                    else "",
                 }
 
                 result = subprocess.run(

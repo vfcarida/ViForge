@@ -11,7 +11,9 @@ from viforge.preprocessing.contamination import ContaminationDetector
 
 def main():
     if len(sys.argv) < 3:
-        print("Usage: python decontaminate_dataset.py <input_dataset.jsonl> <output_dataset.parquet>")
+        print(
+            "Usage: python decontaminate_dataset.py <input_dataset.jsonl> <output_dataset.parquet>"
+        )
         return
 
     in_path = Path(sys.argv[1])

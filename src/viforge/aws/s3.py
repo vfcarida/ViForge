@@ -13,7 +13,9 @@ class S3SyncManager:
         self.bucket_name = bucket_name
 
     def upload_directory(self, local_dir: Path, s3_prefix: str) -> str:
-        logger.info(f"S3SyncManager: uploading '{local_dir}' to 's3://{self.bucket_name}/{s3_prefix}'...")
+        logger.info(
+            f"S3SyncManager: uploading '{local_dir}' to 's3://{self.bucket_name}/{s3_prefix}'..."
+        )
         try:
             import boto3
 
@@ -30,5 +32,7 @@ class S3SyncManager:
 
     def download_directory(self, s3_prefix: str, local_dir: Path) -> Path:
         local_dir.mkdir(parents=True, exist_ok=True)
-        logger.info(f"S3SyncManager: downloading 's3://{self.bucket_name}/{s3_prefix}' to '{local_dir}'...")
+        logger.info(
+            f"S3SyncManager: downloading 's3://{self.bucket_name}/{s3_prefix}' to '{local_dir}'..."
+        )
         return local_dir

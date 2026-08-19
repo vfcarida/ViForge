@@ -31,7 +31,9 @@ class AWSCleanupManager:
 
     @classmethod
     def terminate_orphaned_jobs(cls, experiment_prefix: str = "viforge-") -> Dict[str, Any]:
-        logger.info(f"AWSCleanupManager: checking for running instances matching '{experiment_prefix}'...")
+        logger.info(
+            f"AWSCleanupManager: checking for running instances matching '{experiment_prefix}'..."
+        )
         # Safe no-op if running in local/offline environment
         return {
             "instances_checked": 0,

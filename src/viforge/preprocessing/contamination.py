@@ -37,7 +37,9 @@ class ContaminationDetector:
             ngrams = self._extract_ngrams(tokens)
             bank.update(ngrams)
         self._benchmark_ngrams[benchmark_name] = bank
-        logger.info(f"Registered benchmark '{benchmark_name}' with {len(bank)} unique {self.ngram_size}-grams.")
+        logger.info(
+            f"Registered benchmark '{benchmark_name}' with {len(bank)} unique {self.ngram_size}-grams."
+        )
 
     def check_sample(self, text: str) -> Dict[str, float]:
         tokens = self._normalize_tokens(text)

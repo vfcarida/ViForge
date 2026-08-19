@@ -12,7 +12,12 @@ from viforge.utils.logging import logger
 class WandbCallback:
     """Streams live training metrics and artifacts to Weights & Biases."""
 
-    def __init__(self, project_name: str = "viforge-specialization", experiment_id: str = "exp-001", enabled: bool = False):
+    def __init__(
+        self,
+        project_name: str = "viforge-specialization",
+        experiment_id: str = "exp-001",
+        enabled: bool = False,
+    ):
         self.enabled = enabled
         self.project_name = project_name
         self.experiment_id = experiment_id
@@ -69,7 +74,12 @@ class MLflowCallback:
 class CompositeObservabilityCallback:
     """Orchestrates local logging, JSONL streaming, WandB, and MLflow."""
 
-    def __init__(self, output_dir: Path, cost_tracking: Optional[CostTrackingConfig] = None, experiment_id: str = "exp-001"):
+    def __init__(
+        self,
+        output_dir: Path,
+        cost_tracking: Optional[CostTrackingConfig] = None,
+        experiment_id: str = "exp-001",
+    ):
         self.output_dir = output_dir
         self.output_dir.mkdir(parents=True, exist_ok=True)
         self.metrics_log_path = output_dir / "training_metrics.jsonl"
@@ -88,7 +98,9 @@ class CompositeObservabilityCallback:
         self.wandb.init_run()
         self.mlflow.init_run(run_name=experiment_id)
 
-    def log_step(self, step: int, loss: float, lr: float, tokens_per_sec: float, vram_gb: float) -> None:
+    def log_step(
+        self, step: int, loss: float, lr: float, tokens_per_sec: float, vram_gb: float
+    ) -> None:
         record = {
             "step": step,
             "loss": round(loss, 4),

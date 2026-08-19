@@ -19,7 +19,9 @@ class TargetModuleResolver:
     }
 
     @classmethod
-    def resolve(cls, model_name_or_hub_id: str, requested_targets: Union[str, List[str], None]) -> List[str]:
+    def resolve(
+        cls, model_name_or_hub_id: str, requested_targets: Union[str, List[str], None]
+    ) -> List[str]:
         if isinstance(requested_targets, list) and requested_targets:
             return requested_targets
 

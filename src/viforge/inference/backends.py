@@ -79,7 +79,11 @@ class HuggingFaceInferenceBackend(BaseInferenceBackend):
         from peft import PeftModel
 
         logger.info(f"HFInferenceBackend: loading model from '{model_path_or_id}'...")
-        dtype = torch.bfloat16 if torch.cuda.is_available() and torch.cuda.is_bf16_supported() else torch.float16
+        dtype = (
+            torch.bfloat16
+            if torch.cuda.is_available() and torch.cuda.is_bf16_supported()
+            else torch.float16
+        )
 
         self.tokenizer = AutoTokenizer.from_pretrained(model_path_or_id)
         if self.tokenizer.pad_token is None:
@@ -145,7 +149,9 @@ class InferenceBackendRegistry:
     def get(self, name: str) -> BaseInferenceBackend:
         key = name.lower()
         if key not in self._backends:
-            raise KeyError(f"Inference backend '{name}' not found. Available: {list(self._backends.keys())}")
+            raise KeyError(
+                f"Inference backend '{name}' not found. Available: {list(self._backends.keys())}"
+            )
         return self._backends[key]()
 
 

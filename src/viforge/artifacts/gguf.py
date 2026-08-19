@@ -40,17 +40,19 @@ class GGUFExporter:
         for stop in stops:
             modelfile_content.append(f'PARAMETER stop "{stop}"')
 
-        modelfile_content.extend([
-            f'SYSTEM "{system_prompt}"',
-            "",
-            "# Template for Chat/Instruction formatting",
-            'TEMPLATE """{{ if .System }}<|im_start|>system',
-            '{{ .System }}<|im_end|>',
-            '{{ end }}{{ if .Prompt }}<|im_start|>user',
-            '{{ .Prompt }}<|im_end|>',
-            '{{ end }}<|im_start|>assistant',
-            '{{ .Response }}<|im_end|>"""',
-        ])
+        modelfile_content.extend(
+            [
+                f'SYSTEM "{system_prompt}"',
+                "",
+                "# Template for Chat/Instruction formatting",
+                'TEMPLATE """{{ if .System }}<|im_start|>system',
+                "{{ .System }}<|im_end|>",
+                "{{ end }}{{ if .Prompt }}<|im_start|>user",
+                "{{ .Prompt }}<|im_end|>",
+                "{{ end }}<|im_start|>assistant",
+                '{{ .Response }}<|im_end|>"""',
+            ]
+        )
 
         full_text = "\n".join(modelfile_content) + "\n"
 
@@ -74,7 +76,9 @@ class GGUFExporter:
         Exports a merged PyTorch/Safetensors model checkpoint to GGUF format and creates a Modelfile.
         """
         if quant_type not in cls.SUPPORTED_QUANTS:
-            raise ValueError(f"Unsupported quantization: {quant_type}. Supported: {cls.SUPPORTED_QUANTS}")
+            raise ValueError(
+                f"Unsupported quantization: {quant_type}. Supported: {cls.SUPPORTED_QUANTS}"
+            )
 
         output_gguf_dir.mkdir(parents=True, exist_ok=True)
         model_name = merged_model_dir.name or "viforge_specialist"
@@ -97,7 +101,9 @@ class GGUFExporter:
             f.write(f"GGUF_MAGIC_V3:{json.dumps(gguf_manifest)}")
 
         if generate_ollama:
-            sys_p = system_prompt or "You are ViForge Specialist, an expert software engineering AI."
+            sys_p = (
+                system_prompt or "You are ViForge Specialist, an expert software engineering AI."
+            )
             cls.generate_modelfile(
                 gguf_file_path=gguf_path,
                 output_modelfile_path=modelfile_path,

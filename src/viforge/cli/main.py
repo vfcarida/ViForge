@@ -37,11 +37,20 @@ def run_doctor():
 
     table.add_row("Python Version", diag["python_version"])
     table.add_row("OS Platform", diag["os_platform"])
-    table.add_row("CPU Physical / Logical", f"{diag['cpu_count_physical']} / {diag['cpu_count_logical']}")
-    table.add_row("RAM Total / Available", f"{diag['ram_total_gb']} GB / {diag['ram_available_gb']} GB")
+    table.add_row(
+        "CPU Physical / Logical", f"{diag['cpu_count_physical']} / {diag['cpu_count_logical']}"
+    )
+    table.add_row(
+        "RAM Total / Available", f"{diag['ram_total_gb']} GB / {diag['ram_available_gb']} GB"
+    )
     table.add_row("Disk Total / Free", f"{diag['disk_total_gb']} GB / {diag['disk_free_gb']} GB")
     table.add_row("PyTorch Version", str(diag["pytorch_version"]))
-    table.add_row("CUDA Available", "[bold green]Yes[/bold green]" if diag["cuda_available"] else "[yellow]No (CPU Mode)[/yellow]")
+    table.add_row(
+        "CUDA Available",
+        "[bold green]Yes[/bold green]"
+        if diag["cuda_available"]
+        else "[yellow]No (CPU Mode)[/yellow]",
+    )
 
     if diag["cuda_available"]:
         for dev in diag["cuda_devices"]:
@@ -63,10 +72,14 @@ def validate_config(
     """Validate experiment manifest against Pydantic schemas."""
     console.print(f"[bold cyan]Validating manifest:[/bold cyan] {config_path}")
     manifest = ConfigLoader.load_manifest(config_path)
-    console.print(f"[bold green]OK:[/bold green] Valid manifest for experiment [bold]{manifest.experiment_id}[/bold].")
+    console.print(
+        f"[bold green]OK:[/bold green] Valid manifest for experiment [bold]{manifest.experiment_id}[/bold]."
+    )
     console.print(f"  • Model: {manifest.model.name} ({manifest.model.hf_hub_id})")
     console.print(f"  • Stages: {len(manifest.pipeline)}")
-    console.print(f"  • Benchmarks: {len(manifest.evaluation.domain_benchmarks)} domain, {len(manifest.evaluation.general_retention_benchmarks)} retention")
+    console.print(
+        f"  • Benchmarks: {len(manifest.evaluation.domain_benchmarks)} domain, {len(manifest.evaluation.general_retention_benchmarks)} retention"
+    )
 
 
 @app.command("prepare-data")
@@ -77,7 +90,9 @@ def prepare_data(
     console.print(f"[bold cyan]Preparing and validating datasets for:[/bold cyan] {config_path}")
     manifest = ConfigLoader.load_manifest(config_path)
     for stage in manifest.pipeline:
-        console.print(f"  [green]✓[/green] Ingested and verified dataset [bold]{stage.dataset.id}[/bold] (Split: {stage.dataset.split})")
+        console.print(
+            f"  [green]✓[/green] Ingested and verified dataset [bold]{stage.dataset.id}[/bold] (Split: {stage.dataset.split})"
+        )
     console.print("[bold green]Dataset preparation complete.[/bold green]")
 
 
@@ -105,7 +120,9 @@ def run_train(
     console.print("[bold green]Pre-flight checks passed.[/bold green] Executing training stages...")
     results = runner.run_training_stages()
     for stage_id, res in results.items():
-        console.print(f"  [green]✓[/green] Stage [bold]{stage_id}[/bold] completed. Cost: ${res.get('estimated_cost_usd', 0):.2f}")
+        console.print(
+            f"  [green]✓[/green] Stage [bold]{stage_id}[/bold] completed. Cost: ${res.get('estimated_cost_usd', 0):.2f}"
+        )
 
 
 @app.command("evaluate")
@@ -199,7 +216,9 @@ def run_report(
 def run_all(
     config_path: Path = typer.Argument(..., help="Path to experiment YAML manifest"),
     work_dir: Path = typer.Option(Path("runs"), "--work-dir", "-w"),
-    mock: bool = typer.Option(True, "--mock/--live", help="Use deterministic mock backend for fast CI/test execution"),
+    mock: bool = typer.Option(
+        True, "--mock/--live", help="Use deterministic mock backend for fast CI/test execution"
+    ),
 ):
     """Execute complete end-to-end ViForge experimentation campaign."""
     runner = ExperimentRunner.from_yaml(config_path, work_dir)
@@ -209,16 +228,24 @@ def run_all(
     console.print("\n[bold green]=== Campaign Completed Successfully ===[/bold green]")
     console.print(f"[bold]Model:[/bold] {summary.model_name}")
     console.print(f"[bold]Domain Gain:[/bold] [green]{summary.domain_gain_pct:+.2f}%[/green]")
-    console.print(f"[bold]Retention Delta:[/bold] [yellow]{summary.retention_delta_pct:+.2f}%[/yellow]")
+    console.print(
+        f"[bold]Retention Delta:[/bold] [yellow]{summary.retention_delta_pct:+.2f}%[/yellow]"
+    )
     console.print(f"[bold]Total Training Cost:[/bold] ${summary.total_training_cost_usd:.2f}")
     console.print(f"\n[bold underline]Verdict:[/bold underline]\n{summary.verdict}\n")
 
 
 @app.command("export-gguf")
 def export_gguf_cli(
-    model_dir: Path = typer.Argument(..., help="Directory of merged HuggingFace / Safetensors model"),
-    output_dir: Path = typer.Option(Path("exports/gguf"), "--output-dir", "-o", help="Output directory for GGUF and Modelfile"),
-    quant_type: str = typer.Option("Q4_K_M", "--quant-type", "-q", help="Quantization type (Q4_K_M, Q5_K_M, Q8_0, F16)"),
+    model_dir: Path = typer.Argument(
+        ..., help="Directory of merged HuggingFace / Safetensors model"
+    ),
+    output_dir: Path = typer.Option(
+        Path("exports/gguf"), "--output-dir", "-o", help="Output directory for GGUF and Modelfile"
+    ),
+    quant_type: str = typer.Option(
+        "Q4_K_M", "--quant-type", "-q", help="Quantization type (Q4_K_M, Q5_K_M, Q8_0, F16)"
+    ),
     system_prompt: str = typer.Option(
         "You are ViForge Specialist, an expert software engineering and reasoning AI.",
         "--system-prompt",
@@ -237,19 +264,25 @@ def export_gguf_cli(
     )
     console.print(f"[bold green]GGUF Exported:[/bold green] {res['gguf_path']}")
     console.print(f"[bold green]Ollama Modelfile:[/bold green] {res['modelfile_path']}")
-    console.print(f"[dim]Run locally with: ollama create {model_dir.name} -f {res['modelfile_path']}[/dim]")
+    console.print(
+        f"[dim]Run locally with: ollama create {model_dir.name} -f {res['modelfile_path']}[/dim]"
+    )
 
 
 @app.command("quantize")
 def quantize_cli(
     model_dir: Path = typer.Argument(..., help="Directory of merged model"),
-    output_dir: Path = typer.Option(Path("exports/awq"), "--output-dir", "-o", help="Output directory for AWQ model"),
+    output_dir: Path = typer.Option(
+        Path("exports/awq"), "--output-dir", "-o", help="Output directory for AWQ model"
+    ),
     bits: int = typer.Option(4, "--bits", "-b", help="Quantization bitwidth (4 or 8)"),
     group_size: int = typer.Option(128, "--group-size", "-g", help="AWQ group size"),
 ):
     """Apply AWQ post-training quantization for low-VRAM deployment."""
     console.print(f"[bold cyan]Applying AWQ {bits}-bit quantization to:[/bold cyan] {model_dir}")
-    res = AWQQuantizer.quantize(model_path=model_dir, output_dir=output_dir, bits=bits, group_size=group_size)
+    res = AWQQuantizer.quantize(
+        model_path=model_dir, output_dir=output_dir, bits=bits, group_size=group_size
+    )
     console.print(f"[bold green]AWQ Model saved to:[/bold green] {res['output_dir']}")
 
 

@@ -25,10 +25,14 @@ class LigerKernelManager:
             # In production with liger-kernel installed:
             # from liger_kernel.transformers import apply_liger_kernel_to_llama
             # apply_liger_kernel_to_llama()
-            logger.info("Liger-Kernel Triton fused kernels activated (RMSNorm, CrossEntropy, SwiGLU).")
+            logger.info(
+                "Liger-Kernel Triton fused kernels activated (RMSNorm, CrossEntropy, SwiGLU)."
+            )
             return True
         except ImportError:
-            logger.warning("liger-kernel package not installed. Gracefully falling back to native PyTorch kernels.")
+            logger.warning(
+                "liger-kernel package not installed. Gracefully falling back to native PyTorch kernels."
+            )
             return False
 
 

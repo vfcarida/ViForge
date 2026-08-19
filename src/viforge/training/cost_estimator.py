@@ -3,7 +3,12 @@ ViForge Training Duration, FLOPs, and Cost Estimator.
 """
 
 from typing import Any, Dict
-from viforge.config.schemas import ModelConfig, HyperparametersConfig, HardwareConfig, CostTrackingConfig
+from viforge.config.schemas import (
+    ModelConfig,
+    HyperparametersConfig,
+    HardwareConfig,
+    CostTrackingConfig,
+)
 from viforge.training.profiler import ResourceProfiler
 
 
@@ -30,7 +35,9 @@ class TrainingCostEstimator:
         cost_config: CostTrackingConfig,
         total_tokens: int,
     ) -> Dict[str, Any]:
-        total_params, trainable_params, _ = ResourceProfiler.estimate_trainable_parameters(model_config, hyperparams)
+        total_params, trainable_params, _ = ResourceProfiler.estimate_trainable_parameters(
+            model_config, hyperparams
+        )
 
         if trainable_params == total_params:
             total_flops = 6.0 * total_params * total_tokens * hyperparams.num_epochs
@@ -47,7 +54,9 @@ class TrainingCostEstimator:
         estimated_duration_seconds = max(60.0, total_flops / cluster_flops_per_sec)
         estimated_duration_hours = estimated_duration_seconds / 3600.0
 
-        estimated_tokens_per_sec = (total_tokens * hyperparams.num_epochs) / estimated_duration_seconds
+        estimated_tokens_per_sec = (
+            total_tokens * hyperparams.num_epochs
+        ) / estimated_duration_seconds
         hourly_rate = cost_config.sagemaker_hourly_rate_usd or cost_config.ec2_hourly_rate_usd
         estimated_cost_usd = estimated_duration_hours * hourly_rate
 

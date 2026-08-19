@@ -14,7 +14,9 @@ def test_synthetic_data_pipeline_integration():
         {"prompt": "Write add", "response": "```python\ndef add(a, b):\n    return a + b\n```"},
         {"prompt": "Write broken", "response": "```python\ndef broken(:\n```"},
     ]
-    accepted, stats = pipeline.process_and_filter_candidates(candidates, system_prompt="Generate clean python.")
+    accepted, stats = pipeline.process_and_filter_candidates(
+        candidates, system_prompt="Generate clean python."
+    )
     assert len(accepted) == 1
     assert stats["rejected_samples"] == 1
     assert "provenance" in accepted[0]

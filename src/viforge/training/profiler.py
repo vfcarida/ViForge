@@ -4,7 +4,12 @@ Validates GPU VRAM, CPU RAM, disk space, and sequence length feasibility before 
 """
 
 from typing import Dict, Tuple
-from viforge.config.schemas import ModelConfig, HyperparametersConfig, HardwareConfig, QuantizationType
+from viforge.config.schemas import (
+    ModelConfig,
+    HyperparametersConfig,
+    HardwareConfig,
+    QuantizationType,
+)
 from viforge.utils.logging import logger
 
 
@@ -20,14 +25,19 @@ class ResourceProfiler:
         total_params = int(model_config.total_parameters * 1e9)
 
         if (
-            hyperparams.quantization in [QuantizationType.NF4, QuantizationType.FP4, QuantizationType.INT8]
+            hyperparams.quantization
+            in [QuantizationType.NF4, QuantizationType.FP4, QuantizationType.INT8]
             or hyperparams.lora_rank > 0
         ):
             num_targets = len(hyperparams.target_modules or model_config.target_modules)
-            approx_hidden_dim = 4096 if total_params < 10e9 else 5120 if total_params < 20e9 else 8192
+            approx_hidden_dim = (
+                4096 if total_params < 10e9 else 5120 if total_params < 20e9 else 8192
+            )
             approx_layers = 32 if total_params < 10e9 else 48 if total_params < 20e9 else 64
 
-            lora_params = int(2 * approx_hidden_dim * hyperparams.lora_rank * num_targets * approx_layers)
+            lora_params = int(
+                2 * approx_hidden_dim * hyperparams.lora_rank * num_targets * approx_layers
+            )
             trainable_params = min(lora_params, int(total_params * 0.05))
         else:
             trainable_params = total_params
@@ -42,7 +52,9 @@ class ResourceProfiler:
         hyperparams: HyperparametersConfig,
         hardware: HardwareConfig,
     ) -> Dict[str, float]:
-        total_params, trainable_params, _ = cls.estimate_trainable_parameters(model_config, hyperparams)
+        total_params, trainable_params, _ = cls.estimate_trainable_parameters(
+            model_config, hyperparams
+        )
 
         # 1. Base weights
         if hyperparams.quantization in [QuantizationType.NF4, QuantizationType.FP4]:
@@ -72,9 +84,13 @@ class ResourceProfiler:
         num_layers = 32 if total_params < 10e9 else 48 if total_params < 20e9 else 64
 
         if hyperparams.gradient_checkpointing:
-            act_mem_bytes = 2 * batch_size * seq_len * hidden_dim * num_layers * 2.0 / hardware.num_gpus
+            act_mem_bytes = (
+                2 * batch_size * seq_len * hidden_dim * num_layers * 2.0 / hardware.num_gpus
+            )
         else:
-            act_mem_bytes = 10 * batch_size * seq_len * hidden_dim * num_layers * 2.0 / hardware.num_gpus
+            act_mem_bytes = (
+                10 * batch_size * seq_len * hidden_dim * num_layers * 2.0 / hardware.num_gpus
+            )
 
         act_mem_gb = max(0.5, act_mem_bytes / (1024**3))
         overhead_gb = 1.5
@@ -107,7 +123,9 @@ class ResourceProfiler:
             if hyperparams.quantization == QuantizationType.NONE:
                 rec.append("Enable QLoRA 4-bit quantization ('nf4')")
             if hyperparams.per_device_batch_size > 1:
-                rec.append(f"Reduce per_device_batch_size from {hyperparams.per_device_batch_size} to 1 or 2")
+                rec.append(
+                    f"Reduce per_device_batch_size from {hyperparams.per_device_batch_size} to 1 or 2"
+                )
             if not hyperparams.gradient_checkpointing:
                 rec.append("Enable gradient_checkpointing = True")
             if "8bit" not in hyperparams.optimizer:
@@ -115,7 +133,11 @@ class ResourceProfiler:
             if hyperparams.max_seq_len > 2048:
                 rec.append(f"Reduce max_seq_len from {hyperparams.max_seq_len} to 2048")
 
-            recommendation_msg = "; ".join(rec) if rec else "Allocate GPUs with larger VRAM (e.g. A100 80GB or H100)."
+            recommendation_msg = (
+                "; ".join(rec)
+                if rec
+                else "Allocate GPUs with larger VRAM (e.g. A100 80GB or H100)."
+            )
             raise RuntimeError(
                 f"Pre-flight Resource Validation FAILED: required {total_est:.2f} GB, available {hardware.vram_per_gpu_gb:.2f} GB. "
                 f"Actionable remediation: {recommendation_msg}"

@@ -78,9 +78,9 @@ class ReportGenerator:
 
         return f"""# ViForge Experiment Report: `{summary.experiment_id}`
 
-**Model Base:** `{summary.model_name}`  
-**Timestamp:** `{summary.timestamp.isoformat()}`  
-**Total Training Cost:** `${summary.total_training_cost_usd:.2f}`  
+**Model Base:** `{summary.model_name}`
+**Timestamp:** `{summary.timestamp.isoformat()}`
+**Total Training Cost:** `${summary.total_training_cost_usd:.2f}`
 **Total Wall-Clock Time:** `{summary.total_wall_clock_hours:.2f} hrs`
 
 ---

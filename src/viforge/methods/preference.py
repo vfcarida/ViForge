@@ -56,7 +56,9 @@ class DPOMethod(BaseTrainingMethod):
             wall_clock_seconds=elapsed_sec,
             estimated_stage_cost_usd=round((elapsed_sec / 3600.0) * 7.40, 2),
         )
-        logger.info(f"DPO Stage '{stage_config.stage_id}' completed in {elapsed_sec:.1f}s (beta={hp.beta}).")
+        logger.info(
+            f"DPO Stage '{stage_config.stage_id}' completed in {elapsed_sec:.1f}s (beta={hp.beta})."
+        )
         return metrics
 
 

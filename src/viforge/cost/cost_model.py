@@ -65,5 +65,7 @@ class CostModel:
     ) -> float:
         forgetting_penalty = max(0.0, -retention_delta) * forgetting_weight
         net_gain = domain_gain - forgetting_penalty
-        total_cost = max(1.0, total_experiment_cost + (amortized_query_volume * infer_cost_per_query))
+        total_cost = max(
+            1.0, total_experiment_cost + (amortized_query_volume * infer_cost_per_query)
+        )
         return round((net_gain / total_cost) * 1000.0, 4)

@@ -47,7 +47,9 @@ class MethodRegistry:
     def get(self, name: str) -> BaseTrainingMethod:
         key = name.lower()
         if key not in self._methods:
-            raise KeyError(f"Training method '{name}' not registered. Available: {list(self._methods.keys())}")
+            raise KeyError(
+                f"Training method '{name}' not registered. Available: {list(self._methods.keys())}"
+            )
         return self._methods[key]()
 
     def list_all(self) -> list[str]:

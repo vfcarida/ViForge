@@ -25,7 +25,10 @@ class PIIFilter:
                         findings.append((f"pii:{name}", m))
             elif name == "email":
                 for m in pattern.findall(text):
-                    if not any(d in m.lower() for d in ["example.com", "test.com", "placeholder.org", "domain.com"]):
+                    if not any(
+                        d in m.lower()
+                        for d in ["example.com", "test.com", "placeholder.org", "domain.com"]
+                    ):
                         findings.append((f"pii:{name}", m))
             else:
                 for m in pattern.findall(text):

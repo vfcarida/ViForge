@@ -39,7 +39,9 @@ def test_contamination_detector():
     detector = ContaminationDetector(ngram_size=5)
     detector.register_benchmark_corpus(
         "humaneval",
-        ["def has_close_elements(numbers: list[float], threshold: float) -> bool:\n    for i in numbers: pass"],
+        [
+            "def has_close_elements(numbers: list[float], threshold: float) -> bool:\n    for i in numbers: pass"
+        ],
     )
 
     clean_sample = "def calculate_compound_interest(principal, rate, time):\n    return principal * (1 + rate)**time"

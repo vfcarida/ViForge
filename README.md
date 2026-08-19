@@ -80,10 +80,10 @@ Rather than assuming fine-tuning is always optimal, ViForge rigorously tests:
 flowchart TD
     Config["📄 Experiment Manifest (YAML / JSON)"] --> Loader["⚙️ ConfigLoader / Pydantic v2"]
     Loader --> Profiler["🛡️ Pre-Flight VRAM & Cost Profiler"]
-    
+
     Profiler -->|VRAM Exceeded| FailFast["❌ Actionable Remediation (Abort)"]
     Profiler -->|Checks Passed| Runner["🚀 ExperimentRunner (DAG Resolver)"]
-    
+
     subgraph Data Pipeline ["🔒 Data Governance & Contamination Shield"]
         RawData["📁 Raw Datasets (JSONL / Parquet)"] --> Scanner["🔍 Secrets & PII Scanner"]
         Scanner --> Dedup["🧩 MinHash LSH Deduplication (128-hash)"]
@@ -103,11 +103,11 @@ flowchart TD
 
     TrainingPipeline --> Merger["⚡ AdapterMerger (merge_and_unload)"]
     Merger --> SpecEval["🔬 Specialized Benchmark Evaluation"]
-    
+
     BaseEval & SpecEval --> Stats["📈 Statistical Comparator (95% Wilson CI)"]
     Stats --> CostMod["💰 AWS Cost Model & Amortization"]
     CostMod --> ParetoEng["📊 Pareto Engine (Non-Dominated Sorting)"]
-    
+
     ParetoEng --> Reports["📑 Report Generator (Markdown / HTML / JSON)"]
     Merger --> ExportGGUF["📦 GGUF Exporter & Ollama Modelfile"]
     Merger --> ExportAWQ["⚙️ AWQ 4-bit Quantization"]

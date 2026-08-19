@@ -54,10 +54,20 @@ class ModelConfig(BaseModel):
     revision: str = Field("main", description="Git commit hash or branch")
     model_type: ModelType = Field(ModelType.CAUSAL_LM, description="Model architecture type")
     total_parameters: float = Field(..., description="Total parameters in billions (e.g. 14.0)")
-    active_parameters: Optional[float] = Field(None, description="Active parameters for MoE architectures")
+    active_parameters: Optional[float] = Field(
+        None, description="Active parameters for MoE architectures"
+    )
     context_window: int = Field(4096, description="Maximum native context length")
     target_modules: List[str] = Field(
-        default_factory=lambda: ["q_proj", "k_proj", "v_proj", "o_proj", "gate_proj", "up_proj", "down_proj"]
+        default_factory=lambda: [
+            "q_proj",
+            "k_proj",
+            "v_proj",
+            "o_proj",
+            "gate_proj",
+            "up_proj",
+            "down_proj",
+        ]
     )
     expected_license: str = Field("MIT", description="Expected license")
     pricing: BasePricingConfig = Field(default_factory=BasePricingConfig)
@@ -74,7 +84,9 @@ class DatasetGovernanceManifest(BaseModel):
     content_sha256: str = Field(..., description="SHA-256 hash of dataset content")
     preprocessing_version: str = Field("1.0.0", description="Semver of preprocessing logic")
     filtering_version: str = Field("1.0.0", description="Semver of filtering/dedup logic")
-    split_strategy: Literal["repo_stratified", "random", "temporal_cutoff", "author_disjoint"] = "repo_stratified"
+    split_strategy: Literal["repo_stratified", "random", "temporal_cutoff", "author_disjoint"] = (
+        "repo_stratified"
+    )
     contamination_checked: bool = Field(False, description="Whether decontamination scan passed")
     benchmark_overlap_ratio: float = Field(0.0, ge=0.0, le=1.0)
     pii_scan_clean: bool = Field(False, description="Whether PII scan passed")
@@ -102,7 +114,9 @@ class HyperparametersConfig(BaseModel):
     weight_decay: float = Field(0.01, ge=0.0)
     optimizer: str = Field("paged_adamw_8bit")
     use_liger_kernel: bool = Field(False, description="Enable Triton-fused Liger-Kernel")
-    attn_implementation: Optional[str] = Field("sdpa", description="Attention mode ('flash_attention_2', 'sdpa', 'eager')")
+    attn_implementation: Optional[str] = Field(
+        "sdpa", description="Attention mode ('flash_attention_2', 'sdpa', 'eager')"
+    )
 
     # PEFT / LoRA / QLoRA
     quantization: QuantizationType = Field(QuantizationType.NONE)
@@ -124,7 +138,9 @@ class TrainingStageConfig(BaseModel):
     method: TrainingMethodType = Field(..., description="Training method")
     dataset: DatasetReference
     hyperparameters: HyperparametersConfig = Field(default_factory=HyperparametersConfig)
-    depends_on: Optional[str] = Field(None, description="Stage ID that must complete before this stage")
+    depends_on: Optional[str] = Field(
+        None, description="Stage ID that must complete before this stage"
+    )
     output_adapter_dir: Optional[str] = Field(None)
 
 
@@ -180,7 +196,9 @@ class ExperimentManifest(BaseModel):
     tags: List[str] = Field(default_factory=list)
     model: ModelConfig
     hardware: HardwareConfig = Field(default_factory=HardwareConfig)
-    pipeline: List[TrainingStageConfig] = Field(..., description="Sequential or DAG training stages")
+    pipeline: List[TrainingStageConfig] = Field(
+        ..., description="Sequential or DAG training stages"
+    )
     evaluation: EvaluationConfig = Field(default_factory=EvaluationConfig)
     cost_tracking: CostTrackingConfig = Field(default_factory=CostTrackingConfig)
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))

@@ -1,8 +1,8 @@
 # ViForge Experiment Report: `exp_002_deepseek_v4_pro_qlora_sft`
 
-**Model Base:** `DeepSeek V4 Pro`  
-**Timestamp:** `2026-08-14T18:11:39.140119+00:00`  
-**Total Training Cost:** `$0.03`  
+**Model Base:** `DeepSeek V4 Pro`
+**Timestamp:** `2026-08-14T18:11:39.140119+00:00`
+**Total Training Cost:** `$0.03`
 **Total Wall-Clock Time:** `0.00 hrs`
 
 ---

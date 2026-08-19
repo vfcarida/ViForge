@@ -38,7 +38,9 @@ class SyntheticDataPipeline:
         return text.strip()
 
     def verify_example(self, example: Dict[str, Any]) -> Dict[str, Any]:
-        response_text = example.get("response", "") or example.get("completion", "") or example.get("code", "")
+        response_text = (
+            example.get("response", "") or example.get("completion", "") or example.get("code", "")
+        )
         code = self.extract_code_block(str(response_text))
         is_valid, err_msg = CodeNormalizer.validate_ast(code)
         num_lines = len(code.splitlines())

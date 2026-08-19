@@ -43,8 +43,16 @@ class CPTMethod(BaseTrainingMethod):
 
         elapsed_sec = max(1.0, time.time() - start_time)
 
-        total_p = sum(p.numel() for p in prepared_model.parameters()) if prepared_model is not None and hasattr(prepared_model, "parameters") else 14_500_000_000
-        trainable_p = sum(p.numel() for p in prepared_model.parameters() if p.requires_grad) if prepared_model is not None and hasattr(prepared_model, "parameters") else total_p
+        total_p = (
+            sum(p.numel() for p in prepared_model.parameters())
+            if prepared_model is not None and hasattr(prepared_model, "parameters")
+            else 14_500_000_000
+        )
+        trainable_p = (
+            sum(p.numel() for p in prepared_model.parameters() if p.requires_grad)
+            if prepared_model is not None and hasattr(prepared_model, "parameters")
+            else total_p
+        )
 
         metrics = StageMetrics(
             stage_id=stage_config.stage_id,

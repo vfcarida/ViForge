@@ -18,7 +18,9 @@ def test_observability_callbacks():
     with tempfile.TemporaryDirectory() as tmpdir:
         out_dir = Path(tmpdir) / "metrics"
         cfg = CostTrackingConfig(log_to_wandb=True, log_to_mlflow=True)
-        cb = CompositeObservabilityCallback(output_dir=out_dir, cost_tracking=cfg, experiment_id="test-exp")
+        cb = CompositeObservabilityCallback(
+            output_dir=out_dir, cost_tracking=cfg, experiment_id="test-exp"
+        )
 
         cb.log_step(step=1, loss=0.5432, lr=1e-4, tokens_per_sec=1200.0, vram_gb=14.2)
         cb.log_step(step=2, loss=0.4321, lr=9e-5, tokens_per_sec=1250.0, vram_gb=14.3)

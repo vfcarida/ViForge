@@ -22,7 +22,11 @@ class HuggingFaceModelAdapter:
             raise RuntimeError("PyTorch and Transformers are required to load models.")
 
         quant_config = None
-        torch_dtype = torch.bfloat16 if torch.cuda.is_available() and torch.cuda.is_bf16_supported() else torch.float16
+        torch_dtype = (
+            torch.bfloat16
+            if torch.cuda.is_available() and torch.cuda.is_bf16_supported()
+            else torch.float16
+        )
 
         if quantization == "nf4":
             quant_config = BitsAndBytesConfig(
@@ -60,4 +64,6 @@ class HuggingFaceModelAdapter:
         return tokenizer
 
     def get_target_modules(self, requested: Optional[str] = None) -> List[str]:
-        return TargetModuleResolver.resolve(self.model_config.hf_hub_id, requested or self.model_config.target_modules)
+        return TargetModuleResolver.resolve(
+            self.model_config.hf_hub_id, requested or self.model_config.target_modules
+        )

@@ -49,5 +49,7 @@ class ParetoEngine:
             results.append(pt_copy)
 
         optimal_count = sum(1 for p in results if p.is_pareto_optimal)
-        logger.info(f"Pareto analysis: {optimal_count}/{len(results)} points on the optimal frontier.")
+        logger.info(
+            f"Pareto analysis: {optimal_count}/{len(results)} points on the optimal frontier."
+        )
         return results

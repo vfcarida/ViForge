@@ -32,7 +32,9 @@ class EvaluatorRegistry:
     def get(self, name: str):
         key = name.lower()
         if key not in self._suites:
-            raise KeyError(f"Evaluation benchmark '{name}' not found. Available: {list(self._suites.keys())}")
+            raise KeyError(
+                f"Evaluation benchmark '{name}' not found. Available: {list(self._suites.keys())}"
+            )
         return self._suites[key]()
 
     def list_all(self) -> list[str]:

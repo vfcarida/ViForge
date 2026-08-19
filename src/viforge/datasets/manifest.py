@@ -19,10 +19,14 @@ class ManifestManager:
         dataset_id: str,
         file_path: Path,
         source_url: str,
-        source_type: Literal["huggingface", "git_repo", "synthetic_distill", "local_file", "s3"] = "local_file",
+        source_type: Literal[
+            "huggingface", "git_repo", "synthetic_distill", "local_file", "s3"
+        ] = "local_file",
         license_spdx: str = "MIT",
         revision_hash: str = "main",
-        split_strategy: Literal["repo_stratified", "random", "temporal_cutoff", "author_disjoint"] = "repo_stratified",
+        split_strategy: Literal[
+            "repo_stratified", "random", "temporal_cutoff", "author_disjoint"
+        ] = "repo_stratified",
         num_samples: int = 0,
         num_tokens: int = 0,
     ) -> DatasetGovernanceManifest:
@@ -45,7 +49,9 @@ class ManifestManager:
             num_samples=num_samples,
             num_tokens_packed=num_tokens,
         )
-        logger.info(f"Generated governance manifest for '{dataset_id}' (sha256: {checksum[:12]}...).")
+        logger.info(
+            f"Generated governance manifest for '{dataset_id}' (sha256: {checksum[:12]}...)."
+        )
         return manifest
 
     @classmethod

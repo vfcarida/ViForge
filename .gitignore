@@ -81,3 +81,6 @@ checkpoints/
 # OS specific
 .DS_Store
 Thumbs.db
+
+# Clean venv used for lockfile verification
+test_clean_venv/

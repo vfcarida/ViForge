@@ -28,7 +28,9 @@ class CustomSecurityBenchmarkSuite:
         completions = inference_backend.generate(prompts, sampling_params)
 
         # Check for secure parameterization
-        secure_count = sum(1 for c in completions if "%s" in c or "?" in c or "params" in c or "return" in c)
+        secure_count = sum(
+            1 for c in completions if "%s" in c or "?" in c or "params" in c or "return" in c
+        )
         pass_rate = secure_count / len(prompts)
 
         return BenchmarkResult(

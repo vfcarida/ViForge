@@ -90,7 +90,8 @@ class ExperimentRunner:
         )
 
         base_domain_score = (
-            sum(list(r.pass_at_k.values())[0] for r in base_domain_res) / max(1, len(base_domain_res))
+            sum(list(r.pass_at_k.values())[0] for r in base_domain_res)
+            / max(1, len(base_domain_res))
             if base_domain_res
             else 0.50
         )
@@ -131,7 +132,8 @@ class ExperimentRunner:
         )
 
         spec_domain_score = (
-            sum(list(r.pass_at_k.values())[0] for r in spec_domain_res) / max(1, len(spec_domain_res))
+            sum(list(r.pass_at_k.values())[0] for r in spec_domain_res)
+            / max(1, len(spec_domain_res))
             if spec_domain_res
             else 0.68
         )
@@ -141,8 +143,12 @@ class ExperimentRunner:
             else 0.65
         )
 
-        domain_gain_pct = ((spec_domain_score - base_domain_score) / max(1e-4, base_domain_score)) * 100.0
-        retention_delta_pct = ((spec_ret_score - base_ret_score) / max(1e-4, base_ret_score)) * 100.0
+        domain_gain_pct = (
+            (spec_domain_score - base_domain_score) / max(1e-4, base_domain_score)
+        ) * 100.0
+        retention_delta_pct = (
+            (spec_ret_score - base_ret_score) / max(1e-4, base_ret_score)
+        ) * 100.0
 
         # 6. Statistical Comparison
         statistical_deltas = MetricComparator.compare_benchmarks(
@@ -176,7 +182,9 @@ class ExperimentRunner:
             ),
             ParetoPoint(
                 model_name=self.manifest.model.name,
-                stage_or_variant="Specialized (" + "+".join(s.method.value for s in ordered_stages) + ")",
+                stage_or_variant="Specialized ("
+                + "+".join(s.method.value for s in ordered_stages)
+                + ")",
                 domain_score=spec_domain_score,
                 general_retention_score=spec_ret_score,
                 training_cost_usd=total_training_cost,

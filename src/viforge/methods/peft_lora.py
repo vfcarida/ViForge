@@ -112,7 +112,8 @@ class QLoRAMethod(LoRAMethod):
                 from peft import prepare_model_for_kbit_training
 
                 model = prepare_model_for_kbit_training(
-                    model, use_gradient_checkpointing=stage_config.hyperparameters.gradient_checkpointing
+                    model,
+                    use_gradient_checkpointing=stage_config.hyperparameters.gradient_checkpointing,
                 )
             except Exception as e:
                 logger.warning(f"prepare_model_for_kbit_training skipped: {e}")

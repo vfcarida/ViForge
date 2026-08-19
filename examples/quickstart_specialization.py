@@ -3,7 +3,6 @@ ViForge Quickstart: Programmatic Specialization and Pareto Evaluation Example.
 """
 
 from pathlib import Path
-from viforge.config.loader import ConfigLoader
 from viforge.experiments.runner import ExperimentRunner
 
 
@@ -25,8 +24,12 @@ def main():
 
     print("\n--- 3. Specialization Results ---")
     print(f"Model: {summary.model_name}")
-    print(f"Domain Score: {summary.baseline_domain_score:.1%} -> {summary.specialized_domain_score:.1%} ({summary.domain_gain_pct:+.1f}%)")
-    print(f"General Retention: {summary.baseline_retention_score:.1%} -> {summary.specialized_retention_score:.1%} ({summary.retention_delta_pct:+.1f}%)")
+    print(
+        f"Domain Score: {summary.baseline_domain_score:.1%} -> {summary.specialized_domain_score:.1%} ({summary.domain_gain_pct:+.1f}%)"
+    )
+    print(
+        f"General Retention: {summary.baseline_retention_score:.1%} -> {summary.specialized_retention_score:.1%} ({summary.retention_delta_pct:+.1f}%)"
+    )
     print(f"Total Training Cost: ${summary.total_training_cost_usd:.2f}")
     print(f"\nVerdict: {summary.verdict}")
 
