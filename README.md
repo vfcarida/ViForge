@@ -144,9 +144,33 @@ $$\text{CI}_{95\%} = \frac{\hat{p} + \frac{z^2}{2n} \pm z \sqrt{\frac{\hat{p}(1-
 git clone https://github.com/vfcarida/ViForge.git
 cd ViForge
 
-# Install in editable mode with development dependencies
+# Option A: Pinned reproducible installation (recommended for research & CI)
+pip install -r requirements/dev.lock
+pip install -e . --no-deps
+
+# Option B: Standard editable install with dev dependencies
 pip install -e ".[dev]"
 ```
+
+### 🔒 Reproducible Lockfile Management
+
+ViForge maintains cryptographically hashed lockfiles in `requirements/` to guarantee deterministic builds and exact environment replication across researcher workstations and CI/CD pipelines:
+
+- `requirements/base.lock` — Core runtime dependencies
+- `requirements/dev.lock` — Development, test, and linting tooling
+- `requirements/all.lock` — Full stack (core, dev, AWS SageMaker/S3, and inference)
+
+To regenerate all lockfiles from `pyproject.toml`:
+
+```bash
+# Using Makefile
+make lock
+
+pip-compile pyproject.toml -o requirements/base.lock --generate-hashes --allow-unsafe
+pip-compile pyproject.toml --extra dev -o requirements/dev.lock --generate-hashes --allow-unsafe
+pip-compile pyproject.toml --extra dev --extra aws --extra inference -o requirements/all.lock --generate-hashes --allow-unsafe
+```
+
 
 ### 2. Environment Diagnostics (Doctor)
 
@@ -271,6 +295,8 @@ ViForge/
 ├── tests/                       # Unit, contract, integration, smoke, and e2e test suites (30 tests)
 ├── docker/                      # Multi-stage Dockerfile, CPU, and GPU CUDA 12.2 container images
 ├── examples/                    # Python API quickstart and custom benchmark plugin authoring
+├── requirements/                # Cryptographically pinned lockfiles (base.lock, dev.lock, all.lock)
+├── Makefile                     # Build automation and lockfile generation targets
 └── pyproject.toml               # Build system, package metadata, and entrypoints
 ```
 
