@@ -58,10 +58,33 @@ class MockInferenceBackend(BaseInferenceBackend):
                     completions.append("    return number - int(number)\n")
                 else:
                     completions.append("    return 0.0\n")
+            elif "Repository:" in prompt or "diff patch" in prompt:
+                if is_specialized:
+                    completions.append(
+                        "diff --git a/file.py b/file.py\n--- a/file.py\n+++ b/file.py\n@@ -1 +1 @@\n-old\n+new\n"
+                    )
+                else:
+                    completions.append("Unable to resolve issue.")
             elif "MMLU" in prompt or "mitochondria" in prompt:
-                completions.append("Answer: (B) ATP generation")
+                if is_specialized:
+                    completions.append("Answer: (B)")
+                else:
+                    completions.append("Answer: (B)")
+            elif "How many" in prompt or "GSM" in prompt or "clips" in prompt:
+                if is_specialized:
+                    completions.append("Reasoning... #### 72")
+                else:
+                    completions.append("Reasoning... #### 72")
+            elif "gravity" in prompt or "property" in prompt:
+                if is_specialized:
+                    completions.append("Answer: (A)")
+                else:
+                    completions.append("Answer: (A)")
             else:
-                completions.append("def solution():\n    return True\n")
+                if is_specialized:
+                    completions.append("def solution():\n    return True\n")
+                else:
+                    completions.append("def solution():\n    return False\n")
         return completions
 
 

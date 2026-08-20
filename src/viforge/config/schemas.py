@@ -4,7 +4,7 @@ ViForge Pydantic v2 Configuration Schemas and Validation Models.
 
 from datetime import datetime, timezone
 from enum import Enum
-from typing import Any, Dict, List, Optional, Literal
+from typing import Any, Dict, List, Literal, Optional, Union
 from pydantic import BaseModel, Field
 
 
@@ -102,6 +102,69 @@ class DatasetReference(BaseModel):
     manifest_hash: Optional[str] = Field(None, description="Expected SHA-256 manifest hash")
 
 
+class DatasetConfig(BaseModel):
+    domain: str = Field(
+        ..., description="Target domain name (e.g. software_engineering, customer_service)"
+    )
+    source: str = Field(
+        ..., description="HuggingFace dataset ID or local path (e.g. JSON, JSONL, Parquet)"
+    )
+    format: Literal["sft", "dpo", "grpo", "cpt"] = Field(
+        ..., description="Target training technique format"
+    )
+    split: str = Field("train", description="Dataset split (train/validation/test)")
+    subset: Optional[str] = Field(
+        None, description="HuggingFace dataset subset / configuration name"
+    )
+    max_samples: Optional[int] = Field(None, description="Max number of samples to process")
+    seed: int = Field(42, description="Random seed for sampling and shuffling")
+    text_column: str = Field("text", description="Column containing raw text or prompt+completion")
+    instruction_column: Optional[str] = Field(
+        None, description="Column containing user instruction"
+    )
+    input_column: Optional[str] = Field(
+        None, description="Column containing optional additional input context"
+    )
+    response_column: Optional[str] = Field(
+        None, description="Column containing assistant response / completion"
+    )
+    chosen_column: Optional[str] = Field(
+        None, description="Column containing chosen response for DPO"
+    )
+    rejected_column: Optional[str] = Field(
+        None, description="Column containing rejected response for DPO"
+    )
+    min_length: int = Field(50, ge=0, description="Minimum character length filter")
+    max_length: int = Field(32000, ge=1, description="Maximum character length filter")
+    dedup: bool = Field(True, description="Enable MinHash deduplication")
+    dedup_threshold: float = Field(
+        0.85, ge=0.0, le=1.0, description="MinHash Jaccard similarity threshold"
+    )
+    quality_filter: bool = Field(True, description="Enable domain quality heuristics filter")
+
+
+class DomainPresetDatasetItem(BaseModel):
+    source: str
+    subset: Optional[str] = None
+    max_samples: Optional[int] = None
+    text_column: str = "text"
+    instruction_column: Optional[str] = None
+    input_column: Optional[str] = None
+    response_column: Optional[str] = None
+    chosen_column: Optional[str] = None
+    rejected_column: Optional[str] = None
+    split: str = "train"
+
+
+class DomainPresetConfig(BaseModel):
+    domain: str
+    description: Optional[str] = None
+    datasets: Dict[str, List[Union[str, DomainPresetDatasetItem, Dict[str, Any]]]] = Field(
+        default_factory=dict
+    )
+    benchmarks: Dict[str, List[str]] = Field(default_factory=dict)
+
+
 class HyperparametersConfig(BaseModel):
     learning_rate: float = Field(2.0e-4, gt=0)
     lr_scheduler: str = Field("cosine")
@@ -173,9 +236,34 @@ class BenchmarkItemConfig(BaseModel):
 
 class EvaluationConfig(BaseModel):
     sampling: SamplingParams = Field(default_factory=SamplingParams)
-    domain_benchmarks: List[BenchmarkItemConfig] = Field(default_factory=list)
-    general_retention_benchmarks: List[BenchmarkItemConfig] = Field(default_factory=list)
+    domain_benchmarks: List[Union[str, BenchmarkItemConfig]] = Field(
+        default_factory=lambda: [
+            BenchmarkItemConfig(name="humaneval_plus"),
+            BenchmarkItemConfig(name="swe_bench_lite"),
+        ]
+    )
+    retention_benchmarks: List[Union[str, BenchmarkItemConfig]] = Field(
+        default_factory=lambda: [
+            BenchmarkItemConfig(name="mmlu_pro"),
+            BenchmarkItemConfig(name="gsm8k"),
+            BenchmarkItemConfig(name="arc_challenge"),
+        ]
+    )
+    general_retention_benchmarks: Optional[List[Union[str, BenchmarkItemConfig]]] = None
+    max_problems: Optional[int] = Field(None, description="Limit problems evaluated per suite")
+    offline_fallback: bool = Field(True, description="Fallback to offline toy problems")
+    retention_threshold: float = Field(
+        0.90, description="Max 10% degradation acceptable (score ratio >= 0.90)"
+    )
     sandbox_backend: Literal["docker", "gvisor", "subprocess"] = "docker"
+
+
+class RetentionResult(BaseModel):
+    benchmark: str
+    base_score: float
+    specialized_score: float
+    degradation: float
+    within_threshold: bool
 
 
 class CostTrackingConfig(BaseModel):

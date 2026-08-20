@@ -33,4 +33,6 @@ class TargetModuleResolver:
             # Default fallback for modern standard causal transformers
             return ["q_proj", "k_proj", "v_proj", "o_proj", "gate_proj", "up_proj", "down_proj"]
 
-        return [requested_targets]
+        if isinstance(requested_targets, str):
+            return [requested_targets]
+        return ["q_proj", "v_proj"]

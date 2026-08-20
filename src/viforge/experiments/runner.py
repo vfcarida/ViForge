@@ -80,6 +80,9 @@ class ExperimentRunner:
         # 2. Setup Inference & Eval
         infer_backend = backend_registry.get(backend_type)
         eval_harness = EvaluationHarness(self.manifest.evaluation)
+        eval_limit = self.manifest.evaluation.max_problems
+        if eval_limit is None and backend_type == "mock":
+            eval_limit = 5
 
         # 3. Baseline Evaluation
         logger.info("--- Step 1: Evaluating Base Baseline Model ---")
@@ -87,6 +90,7 @@ class ExperimentRunner:
         base_domain_res, base_ret_res = eval_harness.run_all(
             inference_backend=infer_backend,
             output_dir=self.work_dir / "eval_baseline",
+            limit=eval_limit,
         )
 
         base_domain_score = (
@@ -129,6 +133,7 @@ class ExperimentRunner:
         spec_domain_res, spec_ret_res = eval_harness.run_all(
             inference_backend=infer_backend,
             output_dir=self.work_dir / "eval_specialized",
+            limit=eval_limit,
         )
 
         spec_domain_score = (

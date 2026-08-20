@@ -1,0 +1,34 @@
+domain: software_engineering
+description: "Datasets for code generation and software engineering"
+
+datasets:
+  cpt:
+    - source: "bigcode/starcoderdata"
+      subset: "python"
+      max_samples: 50000
+      text_column: "content"
+  sft:
+    - source: "sahil2801/CodeAlpaca-20k"
+      instruction_column: "instruction"
+      response_column: "output"
+    - source: "iamtarun/python_code_instructions_18k_alpaca"
+      instruction_column: "instruction"
+      response_column: "output"
+  dpo:
+    - source: "argilla/CodeFeedback-Filtered-Instruction"
+      instruction_column: "instruction"
+      chosen_column: "chosen_response"
+      rejected_column: "rejected_response"
+  grpo:
+    - source: "openai/humaneval"
+      instruction_column: "prompt"
+
+benchmarks:
+  domain:
+    - "humaneval_plus"
+    - "mbpp_plus"
+    - "swe_bench_lite"
+  retention:
+    - "mmlu_pro"
+    - "gsm8k"
+    - "arc_challenge"

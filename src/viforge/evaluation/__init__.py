@@ -13,7 +13,7 @@ from viforge.evaluation.suites import (
     EvaluatorRegistry,
     evaluator_registry,
 )
-from viforge.evaluation.harness import EvaluationHarness
+from viforge.evaluation.harness import EvaluationHarness, check_retention
 
 __all__ = [
     "HumanEvalPlusSuite",
@@ -26,4 +26,5 @@ __all__ = [
     "EvaluatorRegistry",
     "evaluator_registry",
     "EvaluationHarness",
+    "check_retention",
 ]

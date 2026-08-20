@@ -3,6 +3,7 @@ ViForge Production CLI: End-to-End Specialization & Pareto Evaluation Platform.
 """
 
 from pathlib import Path
+from typing import Optional
 import typer
 from rich.console import Console
 from rich.table import Table
@@ -313,6 +314,89 @@ def list_evaluators():
     """List available benchmark and retention evaluators."""
     evals = evaluator_registry.list_all()
     console.print(f"[bold cyan]Registered Evaluation Benchmarks:[/bold cyan] {', '.join(evals)}")
+
+
+@app.command("prepare-data")
+def prepare_data_cli(
+    domain: Optional[str] = typer.Option(
+        None, "--domain", "-d", help="Domain preset name (e.g. software_engineering)"
+    ),
+    config_path: Optional[Path] = typer.Option(
+        None, "--config", "-c", help="Path to domain YAML preset or dataset YAML config"
+    ),
+    technique: Optional[str] = typer.Option(
+        None,
+        "--technique",
+        "-t",
+        help="Specific technique to prepare (sft, dpo, grpo, cpt, or all)",
+    ),
+    output_dir: Path = typer.Option(
+        Path("data"), "--output", "-o", help="Output directory for prepared datasets"
+    ),
+    max_samples: Optional[int] = typer.Option(
+        None, "--max-samples", "-m", help="Override max samples limit"
+    ),
+    dedup: bool = typer.Option(True, "--dedup/--no-dedup", help="Enable MinHash deduplication"),
+):
+    """Transform and standardize raw domain data into SFT, DPO, GRPO, and CPT datasets."""
+    from viforge.config.schemas import DatasetConfig
+    from viforge.datasets.preparer import DatasetPreparer, load_domain_preset
+
+    output_dir.mkdir(parents=True, exist_ok=True)
+    console.print(Panel.fit("[bold cyan]ViForge Dataset Preparation Pipeline[/bold cyan]"))
+
+    target_preset = None
+    if config_path:
+        target_preset = load_domain_preset(config_path)
+    elif domain:
+        target_preset = load_domain_preset(domain)
+    else:
+        target_preset = load_domain_preset("software_engineering")
+
+    console.print(f"[bold]Domain:[/bold] {target_preset.domain}")
+    techniques = (
+        [technique] if technique and technique != "all" else list(target_preset.datasets.keys())
+    )
+
+    for tech in techniques:
+        items = target_preset.datasets.get(tech, [])
+        for idx, item in enumerate(items):
+            if isinstance(item, str):
+                item_dict = {"source": item}
+            elif hasattr(item, "model_dump"):
+                item_dict = item.model_dump()
+            elif isinstance(item, dict):
+                item_dict = item
+            else:
+                item_dict = dict(item)
+
+            samples_limit = max_samples if max_samples is not None else item_dict.get("max_samples")
+            cfg = DatasetConfig(
+                domain=target_preset.domain,
+                source=item_dict.get("source", ""),
+                format=tech,
+                subset=item_dict.get("subset"),
+                split=item_dict.get("split", "train"),
+                max_samples=samples_limit,
+                text_column=item_dict.get("text_column", "text"),
+                instruction_column=item_dict.get("instruction_column"),
+                input_column=item_dict.get("input_column"),
+                response_column=item_dict.get("response_column"),
+                chosen_column=item_dict.get("chosen_column"),
+                rejected_column=item_dict.get("rejected_column"),
+                dedup=dedup,
+            )
+
+            preparer = DatasetPreparer(cfg)
+            out_name = (
+                f"{target_preset.domain}_{tech}_{idx}.jsonl"
+                if len(items) > 1
+                else f"{target_preset.domain}_{tech}.jsonl"
+            )
+            saved_path = preparer.save(output_dir / out_name)
+            console.print(f"[green]✓ Prepared {tech.upper()} dataset:[/green] {saved_path}")
+
+    console.print("[bold green]Dataset preparation complete![/bold green]")
 
 
 if __name__ == "__main__":
