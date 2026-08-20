@@ -22,6 +22,7 @@ from viforge.metrics.comparison import MetricComparator
 from viforge.cost.cost_model import CostModel
 from viforge.analysis.pareto import ParetoEngine
 from viforge.reporting.generator import ReportGenerator
+from viforge.training.callbacks import CompositeObservabilityCallback
 from viforge.utils.logging import logger
 
 
@@ -74,6 +75,20 @@ class ExperimentRunner:
         start_time = time.time()
         logger.info(f"=== Starting ViForge Experiment: {self.manifest.experiment_id} ===")
 
+        # 0. Observability
+        obs_callback = CompositeObservabilityCallback(
+            output_dir=self.work_dir / "metrics",
+            cost_tracking=self.manifest.cost_tracking,
+            experiment_id=self.manifest.experiment_id,
+        )
+        obs_callback.on_experiment_start(
+            config={
+                "model": self.manifest.model.hf_hub_id,
+                "experiment_id": self.manifest.experiment_id,
+                "backend": backend_type,
+            }
+        )
+
         # 1. Preflight
         self.run_preflight_checks()
 
@@ -114,6 +129,16 @@ class ExperimentRunner:
             logger.info(f"--- Step 2: Executing Stage '{stage.stage_id}' ({stage.method}) ---")
             trainer_method = method_registry.get(stage.method.value)
 
+            obs_callback.on_stage_start(
+                stage_id=stage.stage_id,
+                params={
+                    "method": stage.method.value,
+                    "learning_rate": stage.hyperparameters.learning_rate,
+                    "num_epochs": stage.hyperparameters.num_epochs,
+                    "max_seq_len": stage.hyperparameters.max_seq_len,
+                },
+            )
+
             metrics = trainer_method.execute_stage(
                 model=None,
                 tokenizer=None,
@@ -124,6 +149,7 @@ class ExperimentRunner:
             )
             stage_metrics_list.append(metrics)
             total_training_cost += metrics.estimated_stage_cost_usd
+            obs_callback.on_stage_end(metrics)
 
         # 5. Specialized Model Evaluation
         logger.info("--- Step 3: Evaluating Specialized Model ---")
@@ -240,5 +266,17 @@ class ExperimentRunner:
         )
 
         ReportGenerator.generate_all(summary, self.work_dir / "reports")
+        obs_callback.on_experiment_end(
+            summary={
+                "domain_gain_pct": domain_gain_pct,
+                "retention_delta_pct": retention_delta_pct,
+                "total_training_cost_usd": total_training_cost,
+                "baseline_domain_score": base_domain_score,
+                "specialized_domain_score": spec_domain_score,
+                "baseline_retention_score": base_ret_score,
+                "specialized_retention_score": spec_ret_score,
+                "total_wall_clock_hours": round(elapsed_hours, 4),
+            }
+        )
         logger.info(f"=== ViForge Experiment Completed: {self.manifest.experiment_id} ===")
         return summary
