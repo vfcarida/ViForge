@@ -3,17 +3,19 @@ Unit tests for ViForge Pre-flight Resource and Memory Profiler.
 """
 
 import pytest
+
 from viforge.config.schemas import (
-    ModelConfig,
-    HyperparametersConfig,
-    HardwareConfig,
-    QuantizationType,
     CostTrackingConfig,
+    HardwareConfig,
+    HyperparametersConfig,
+    ModelConfig,
+    QuantizationType,
 )
-from viforge.training.profiler import ResourceProfiler
 from viforge.training.cost_estimator import TrainingCostEstimator
+from viforge.training.profiler import ResourceProfiler
 
 
+@pytest.mark.unit
 def test_qlora_memory_profiling():
     model_conf = ModelConfig(
         name="DeepSeek V4 Pro",
@@ -34,6 +36,7 @@ def test_qlora_memory_profiling():
     assert profile["utilization_pct"] < 50.0
 
 
+@pytest.mark.unit
 def test_memory_exceeded_fail_fast():
     model_conf = ModelConfig(
         name="DeepSeek V4 Pro",
@@ -56,6 +59,7 @@ def test_memory_exceeded_fail_fast():
     assert "remediation" in str(exc_info.value)
 
 
+@pytest.mark.unit
 def test_cost_estimator():
     model_conf = ModelConfig(
         name="DeepSeek V4 Pro",

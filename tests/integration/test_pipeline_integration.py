@@ -2,12 +2,15 @@
 Integration tests for ViForge Synthetic Pipeline, Manifest Management, and Adapter Merging.
 """
 
-import tempfile
 from pathlib import Path
-from viforge.methods.synthetic import SyntheticDataPipeline
+
+import pytest
+
 from viforge.datasets.manifest import ManifestManager
+from viforge.methods.synthetic import SyntheticDataPipeline
 
 
+@pytest.mark.integration
 def test_synthetic_data_pipeline_integration():
     pipeline = SyntheticDataPipeline()
     candidates = [
@@ -22,14 +25,15 @@ def test_synthetic_data_pipeline_integration():
     assert "provenance" in accepted[0]
 
 
-def test_dataset_manifest_integrity():
-    with tempfile.TemporaryDirectory() as tmpdir:
-        sample_file = Path(tmpdir) / "data.jsonl"
-        sample_file.write_text('{"text": "def test(): pass"}\n', encoding="utf-8")
+@pytest.mark.integration
+def test_dataset_manifest_integrity(tmp_output_dir: Path):
+    sample_file = tmp_output_dir / "data.jsonl"
+    sample_file.write_text('{"text": "def test(): pass"}\n', encoding="utf-8")
 
-        manifest = ManifestManager.create_manifest(
-            dataset_id="test_ds",
-            file_path=sample_file,
-            source_url="https://local.test/data.jsonl",
-        )
-        assert ManifestManager.verify_integrity(manifest, sample_file) is True
+    manifest = ManifestManager.create_manifest(
+        dataset_id="test_ds",
+        file_path=sample_file,
+        source_url="https://local.test/data.jsonl",
+    )
+    assert ManifestManager.verify_integrity(manifest, sample_file) is True
+

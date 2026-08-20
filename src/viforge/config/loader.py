@@ -5,7 +5,9 @@ ViForge Configuration Loader and Validator.
 import os
 import re
 from pathlib import Path
+
 import yaml
+
 from viforge.config.schemas import ExperimentManifest, ModelConfig
 from viforge.utils.logging import logger
 
@@ -24,6 +26,11 @@ class ConfigLoader:
             return os.getenv(var_name, default_val)
 
         return pattern.sub(replacer, content)
+
+    @classmethod
+    def load(cls, path: Path) -> ExperimentManifest:
+        """Load, interpolate, and validate an ExperimentManifest (alias for load_manifest)."""
+        return cls.load_manifest(path)
 
     @classmethod
     def load_manifest(cls, path: Path) -> ExperimentManifest:

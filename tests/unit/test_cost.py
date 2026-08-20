@@ -2,12 +2,15 @@
 Unit tests for ViForge Cost Model, Pareto Frontier, and Statistical Metrics.
 """
 
-from viforge.cost.cost_model import CostModel
-from viforge.config.schemas import BasePricingConfig, ParetoPoint
+import pytest
+
 from viforge.analysis.pareto import ParetoEngine
-from viforge.metrics.statistical import wilson_score_interval, compute_relative_delta
+from viforge.config.schemas import BasePricingConfig, ParetoPoint
+from viforge.cost.cost_model import CostModel
+from viforge.metrics.statistical import compute_relative_delta, wilson_score_interval
 
 
+@pytest.mark.unit
 def test_cost_model():
     train_cost = CostModel.calculate_training_cost(wall_clock_seconds=3600, hourly_rate=7.40)
     assert train_cost == 7.40
@@ -25,6 +28,7 @@ def test_cost_model():
     assert cap_usd > 0
 
 
+@pytest.mark.unit
 def test_pareto_engine():
     points = [
         ParetoPoint(
@@ -55,6 +59,7 @@ def test_pareto_engine():
     assert frontier[1].is_pareto_optimal is False
 
 
+@pytest.mark.unit
 def test_statistical_metrics():
     low, high = wilson_score_interval(80, 100)
     assert 0.70 < low < 0.80

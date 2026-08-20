@@ -3,11 +3,16 @@ End-to-End Campaign Orchestration Test for DeepSeek V4 Pro Specialization.
 """
 
 from pathlib import Path
+
+import pytest
+
 from viforge.experiments.runner import ExperimentRunner
 
 
-def test_full_campaign_e2e_execution(tmp_path: Path):
-    manifest_path = Path("configs/experiments/deepseek_v4_pro_software_engineering.yaml")
+@pytest.mark.e2e
+@pytest.mark.slow
+def test_full_campaign_e2e_execution(tmp_path: Path, sample_config_path: Path):
+    manifest_path = sample_config_path
     assert manifest_path.exists()
 
     runner = ExperimentRunner.from_yaml(manifest_path, work_dir=tmp_path)

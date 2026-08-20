@@ -79,6 +79,15 @@ python_files = ["test_*.py"]
 python_classes = ["Test*"]
 python_functions = ["test_*"]
 addopts = "-v --tb=short"
+markers = [
+    "unit: Unit tests (fast, no I/O)",
+    "contract: Contract tests (registry compliance)",
+    "integration: Integration tests (multi-component)",
+    "e2e: End-to-end tests (full pipeline)",
+    "smoke: Smoke tests (CLI and imports)",
+    "slow: Tests that take > 5s",
+    "gpu: Tests requiring GPU",
+]
 
 [tool.ruff]
 line-length = 100

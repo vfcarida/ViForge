@@ -2,11 +2,14 @@
 Unit tests for ViForge Security: Secrets scanning, PII redaction, and Execution Sandbox.
 """
 
-from viforge.security.secrets_scanner import SecretsScanner
+import pytest
+
 from viforge.security.pii_filter import PIIFilter
 from viforge.security.sandbox import ExecutionSandbox
+from viforge.security.secrets_scanner import SecretsScanner
 
 
+@pytest.mark.unit
 def test_secrets_scanner():
     leak = "AWS_ACCESS_KEY_ID = 'AKIA1234567890ABCDEF'\nGH_TOKEN = 'ghp_ABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890'"
     findings = SecretsScanner.scan(leak)
@@ -16,6 +19,7 @@ def test_secrets_scanner():
     assert "<REDACTED_SECRET_" in redacted
 
 
+@pytest.mark.unit
 def test_pii_filter():
     pii_text = "Contact john.doe@realcompany.com or call SSN 123-45-6789 at IP 192.168.1.100."
     findings = PIIFilter.scan(pii_text)
@@ -25,6 +29,7 @@ def test_pii_filter():
     assert "<REDACTED_PII_" in redacted
 
 
+@pytest.mark.unit
 def test_execution_sandbox():
     sandbox = ExecutionSandbox(default_timeout_sec=5)
     result = sandbox.execute_snippet(

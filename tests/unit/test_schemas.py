@@ -2,21 +2,24 @@
 Unit tests for ViForge Pydantic v2 schemas and validation contracts.
 """
 
+import pytest
+
 from viforge.config.schemas import (
+    BenchmarkItemConfig,
+    DatasetReference,
+    EvaluationConfig,
+    ExperimentManifest,
+    HardwareConfig,
+    HyperparametersConfig,
     ModelConfig,
     ModelType,
-    ExperimentManifest,
-    TrainingStageConfig,
-    TrainingMethodType,
-    DatasetReference,
-    HyperparametersConfig,
     QuantizationType,
-    HardwareConfig,
-    EvaluationConfig,
-    BenchmarkItemConfig,
+    TrainingMethodType,
+    TrainingStageConfig,
 )
 
 
+@pytest.mark.unit
 def test_model_config_validation():
     config = ModelConfig(
         name="DeepSeek V4 Pro",
@@ -29,6 +32,7 @@ def test_model_config_validation():
     assert "q_proj" in config.target_modules
 
 
+@pytest.mark.unit
 def test_experiment_manifest_roundtrip():
     manifest = ExperimentManifest(
         experiment_id="exp_test_001",

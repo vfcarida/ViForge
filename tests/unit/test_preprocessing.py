@@ -2,12 +2,15 @@
 Unit tests for ViForge Preprocessing: Normalizer, MinHash Deduplication, Contamination, and Sequence Packing.
 """
 
-from viforge.preprocessing.normalizer import CodeNormalizer
-from viforge.preprocessing.deduplication import MinHashDeduplicator
+import pytest
+
 from viforge.preprocessing.contamination import ContaminationDetector
+from viforge.preprocessing.deduplication import MinHashDeduplicator
+from viforge.preprocessing.normalizer import CodeNormalizer
 from viforge.preprocessing.packing import SequencePacker
 
 
+@pytest.mark.unit
 def test_code_normalizer():
     raw_code = 'def foo():\n    """Docstring to strip."""\n    # inline comment\n    x = 10\n    return x\n'
     clean = CodeNormalizer.strip_comments(raw_code)
@@ -23,6 +26,7 @@ def test_code_normalizer():
     assert "SyntaxError" in err
 
 
+@pytest.mark.unit
 def test_minhash_deduplication():
     records = [
         {"id": 1, "text": "def quick_sort(arr):\n    if len(arr) <= 1: return arr\n    return arr"},
@@ -35,6 +39,7 @@ def test_minhash_deduplication():
     assert stats["exact_duplicates_removed"] >= 1
 
 
+@pytest.mark.unit
 def test_contamination_detector():
     detector = ContaminationDetector(ngram_size=5)
     detector.register_benchmark_corpus(
@@ -53,6 +58,7 @@ def test_contamination_detector():
     assert overlaps_leaked["humaneval"] > 0.5
 
 
+@pytest.mark.unit
 def test_sequence_packer():
     packer = SequencePacker(max_seq_len=16, pad_token_id=0, eos_token_id=2)
     seqs = [[10, 11, 12], [20, 21, 22, 23], [30, 31]]
@@ -61,3 +67,4 @@ def test_sequence_packer():
     assert packed["num_blocks"] >= 1
     assert len(packed["input_ids"][0]) == 16
     assert len(packed["attention_mask"][0]) == 16
+
