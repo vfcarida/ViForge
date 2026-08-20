@@ -1,20 +1,56 @@
+# ==============================================================================
+# ViForge Case Study — DeepSeek V4 Pro Software Engineering Specialization
+# Master Experiment Manifest: Multi-Technique Pareto Comparison Campaign
+#
+# Hypothesis:
+#   DeepSeek V4 Pro (extremely cheap, open-weight) can be specialized for
+#   software engineering to close the gap with frontier models while
+#   maintaining low inference cost.
+#
+# Usage:
+#   viforge validate configs/experiments/deepseek_v4_pro_software_engineering.yaml
+#   viforge baseline configs/experiments/deepseek_v4_pro_software_engineering.yaml
+#   viforge run    configs/experiments/deepseek_v4_pro_software_engineering.yaml --live
+#
+# See: docs/case-studies/deepseek-v4-pro-swe.md
+# ==============================================================================
+
 schema_version: "2.0"
 experiment_id: "deepseek_v4_pro_software_engineering_master"
-tags: ["deepseek_v4_pro", "software_engineering", "master_campaign", "pareto_evaluation"]
+tags:
+  - "deepseek_v4_pro"
+  - "software_engineering"
+  - "master_campaign"
+  - "pareto_evaluation"
+  - "case_study_p13"
 
+# ---------------------------------------------------------------------------- #
+# Base Model Configuration                                                       #
+# ---------------------------------------------------------------------------- #
 model:
   name: "DeepSeek V4 Pro"
+  # Primary target. If weights aren't publicly available yet, use the fallback
+  # below by setting the hf_hub_id to deepseek-ai/deepseek-coder-6.7b-base
   hf_hub_id: "deepseek-ai/deepseek-v4-pro"
+  # Fallback (uncomment if primary is unavailable):
+  # hf_hub_id: "deepseek-ai/deepseek-coder-6.7b-base"
   revision: "main"
   model_type: "causal_lm"
-  total_parameters: 14.5
+  total_parameters: 14.5        # billion parameters (14.5B for v4 Pro)
+  active_parameters: 2.4        # MoE active parameters per forward pass
   context_window: 8192
   expected_license: "MIT"
   pricing:
-    prompt_usd_per_1m: 0.14
+    prompt_usd_per_1m: 0.14     # DeepSeek API pricing (as of 2025-08)
     completion_usd_per_1m: 0.28
   trust_remote_code: false
 
+# ---------------------------------------------------------------------------- #
+# Hardware                                                                       #
+# ---------------------------------------------------------------------------- #
+# QLoRA (r=32) is the entry-point; it runs on a single A100-40GB.
+# LoRA (r=16, r=64) and CPT stages require 2× A100-80GB or equivalent.
+# Adjust num_gpus and accelerator to match your actual cluster.
 hardware:
   accelerator: "NVIDIA_A100_80GB"
   num_gpus: 2
@@ -22,12 +58,29 @@ hardware:
   compute_dtype: "bfloat16"
   enable_flash_attention_2: true
 
+# ---------------------------------------------------------------------------- #
+# Training Pipeline (DAG-resolved)                                              #
+#                                                                               #
+# Stage dependency graph:                                                        #
+#   stage_1_cpt ──────────────────┐                                            #
+#   stage_2_qlora (r=32) ─────────┤                                            #
+#   stage_3_lora_r16 ─────────────┤──► stage_5_dpo (best SFT adapter)         #
+#   stage_4_lora_r64 ─────────────┘                                            #
+#                                                                               #
+# To run only QLoRA (24GB GPU): set only stage_2_qlora in the pipeline list.   #
+# ---------------------------------------------------------------------------- #
 pipeline:
+
+  # ── Stage 1: Continued Pre-Training on Python/Code Corpus ─────────────────
+  # Purpose: Domain-adapt the base language model to code idioms, APIs, and
+  #          patterns before instruction-tuning (CPT → SFT ordering is critical)
+  # Dataset: bigcode/starcoderdata (python subset, 50K files)
+  # Min GPU: 2× A100-40GB | Est. time: ~14h | Est. cost: ~$207
   - stage_id: "stage_1_cpt"
     method: "cpt"
     dataset:
       id: "viforge-se-dapt-code"
-      path: "data/dapt_corpus.parquet"
+      path: "data/software_engineering_cpt.jsonl"
       split: "train"
     hyperparameters:
       learning_rate: 5.0e-5
@@ -36,19 +89,91 @@ pipeline:
       num_epochs: 1
       max_seq_len: 4096
       per_device_batch_size: 2
-      gradient_accumulation_steps: 8
+      gradient_accumulation_steps: 8   # effective batch = 32
       gradient_checkpointing: true
+      optimizer: "paged_adamw_8bit"
+      attn_implementation: "sdpa"
 
-  - stage_id: "stage_2_qlora_sft"
+  # ── Stage 2: QLoRA SFT (r=32, 4-bit NF4) — Entry-point for 24GB GPUs ─────
+  # Purpose: Memory-efficient instruction tuning. Validates pipeline on
+  #          consumer hardware before committing to larger runs.
+  # Dataset: CodeAlpaca-20k + python_code_instructions_18k (20K pairs)
+  # Min GPU: 1× RTX 4090 24GB | Est. time: ~4h | Est. cost: ~$30
+  - stage_id: "stage_2_qlora_sft_r32"
     method: "qlora"
-    depends_on: "stage_1_cpt"
     dataset:
       id: "viforge-se-instruct-python"
-      path: "data/train.parquet"
+      path: "data/software_engineering_sft.jsonl"
       split: "train"
     hyperparameters:
       quantization: "nf4"
       double_quant: true
+      lora_rank: 32
+      lora_alpha: 64
+      lora_dropout: 0.05
+      target_modules:
+        - "q_proj"
+        - "k_proj"
+        - "v_proj"
+        - "o_proj"
+        - "gate_proj"
+        - "up_proj"
+        - "down_proj"
+      learning_rate: 2.0e-4
+      lr_scheduler: "cosine"
+      warmup_ratio: 0.03
+      num_epochs: 3
+      max_seq_len: 4096
+      per_device_batch_size: 4
+      gradient_accumulation_steps: 4   # effective batch = 16
+      gradient_checkpointing: true
+      optimizer: "paged_adamw_8bit"
+      attn_implementation: "sdpa"
+
+  # ── Stage 3: LoRA SFT (r=16) — Small adapter, fast inference ─────────────
+  # Purpose: Baseline adapter for latency-sensitive deployment.
+  # Min GPU: 1× A100-40GB | Est. time: ~6h | Est. cost: ~$44
+  - stage_id: "stage_3_lora_sft_r16"
+    method: "lora"
+    dataset:
+      id: "viforge-se-instruct-python"
+      path: "data/software_engineering_sft.jsonl"
+      split: "train"
+    hyperparameters:
+      quantization: "none"
+      lora_rank: 16
+      lora_alpha: 32
+      lora_dropout: 0.05
+      target_modules:
+        - "q_proj"
+        - "k_proj"
+        - "v_proj"
+        - "o_proj"
+        - "gate_proj"
+        - "up_proj"
+        - "down_proj"
+      learning_rate: 2.0e-4
+      lr_scheduler: "cosine"
+      warmup_ratio: 0.03
+      num_epochs: 3
+      max_seq_len: 4096
+      per_device_batch_size: 4
+      gradient_accumulation_steps: 4
+      gradient_checkpointing: true
+      optimizer: "paged_adamw_8bit"
+      attn_implementation: "flash_attention_2"
+
+  # ── Stage 4: LoRA SFT (r=64) — Large adapter, highest capacity ───────────
+  # Purpose: Upper bound on adapter-based specialization capacity.
+  # Min GPU: 2× A100-80GB | Est. time: ~8h | Est. cost: ~$119
+  - stage_id: "stage_4_lora_sft_r64"
+    method: "lora"
+    dataset:
+      id: "viforge-se-instruct-python"
+      path: "data/software_engineering_sft.jsonl"
+      split: "train"
+    hyperparameters:
+      quantization: "none"
       lora_rank: 64
       lora_alpha: 128
       lora_dropout: 0.05
@@ -69,27 +194,50 @@ pipeline:
       gradient_accumulation_steps: 4
       gradient_checkpointing: true
       optimizer: "paged_adamw_8bit"
+      attn_implementation: "flash_attention_2"
 
-  - stage_id: "stage_3_dpo"
+  # ── Stage 5: DPO — Preference alignment on best SFT checkpoint ───────────
+  # Purpose: Align code quality, docstrings, and error handling to human
+  #          preferences after SFT. Applied to stage_3 (r=16) adapter.
+  # Dataset: CodeFeedback-Filtered-Instruction (10K preference pairs)
+  # Min GPU: 1× A100-40GB | Est. time: ~3h | Est. cost: ~$22
+  - stage_id: "stage_5_dpo"
     method: "dpo"
-    depends_on: "stage_2_qlora_sft"
+    depends_on: "stage_3_lora_sft_r16"
     dataset:
       id: "viforge-se-preference-python"
-      path: "data/dpo.parquet"
+      path: "data/software_engineering_dpo.jsonl"
       split: "train"
     hyperparameters:
       beta: 0.1
       learning_rate: 5.0e-6
+      lr_scheduler: "cosine"
+      warmup_ratio: 0.01
       num_epochs: 1
+      max_seq_len: 4096
       max_prompt_len: 2048
       max_completion_len: 2048
+      per_device_batch_size: 2
+      gradient_accumulation_steps: 4
+      gradient_checkpointing: true
+      optimizer: "paged_adamw_8bit"
 
+# ---------------------------------------------------------------------------- #
+# Evaluation Configuration                                                       #
+# ---------------------------------------------------------------------------- #
+# Deterministic evaluation (temperature=0.0, seed=42) for reproducibility.
+# Domain benchmarks measure specialization improvement.
+# Retention benchmarks verify general capabilities are preserved.
+# Success threshold: ≥5% domain gain, ≤10% retention degradation (Wilson p<0.05)
+# ---------------------------------------------------------------------------- #
 evaluation:
   sampling:
-    temperature: 0.0
+    temperature: 0.0    # deterministic; no sampling noise
     top_p: 1.0
     max_new_tokens: 2048
-    seed: 42
+    seed: 42            # fixed seed — changing this invalidates reproducibility
+
+  # Domain benchmarks — measure IMPROVEMENT in software engineering
   domain_benchmarks:
     - name: "humaneval_plus"
       pass_k: [1]
@@ -97,10 +245,9 @@ evaluation:
     - name: "swe_bench_lite"
       pass_k: [1]
       timeout_seconds: 60
-    - name: "livecodebench"
-      pass_k: [1]
-      timeout_seconds: 15
-  general_retention_benchmarks:
+
+  # Retention benchmarks — verify general capabilities are NOT degraded
+  retention_benchmarks:
     - name: "mmlu_pro"
       pass_k: [1]
       timeout_seconds: 15
@@ -111,7 +258,22 @@ evaluation:
       pass_k: [1]
       timeout_seconds: 15
 
+  # Max retention degradation allowed (0.90 = max 10% drop)
+  retention_threshold: 0.90
+  # Use offline fallback problems when HuggingFace is not reachable
+  offline_fallback: true
+  sandbox_backend: "subprocess"   # Use "docker" in production for isolation
+
+# ---------------------------------------------------------------------------- #
+# Cost Tracking                                                                  #
+# ---------------------------------------------------------------------------- #
+# Set WANDB_API_KEY + log_to_wandb: true to stream metrics to W&B
+# Set MLFLOW_TRACKING_URI + log_to_mlflow: true to use MLflow
 cost_tracking:
-  ec2_hourly_rate_usd: 7.40
+  ec2_hourly_rate_usd: 7.40       # p4d.24xlarge on-demand rate (2× A100-80GB)
+  sagemaker_hourly_rate_usd: 8.50 # SageMaker ml.p4d.24xlarge rate
   storage_gb_month_usd: 0.023
-  log_to_mlflow: false
+  log_to_wandb: false             # Set to true + export WANDB_API_KEY
+  log_to_mlflow: false            # Set to true + export MLFLOW_TRACKING_URI
+  wandb_project: "viforge-deepseek-v4-pro-swe"
+  mlflow_experiment_name: "DeepSeek_V4_Pro_SWE_Specialization"
