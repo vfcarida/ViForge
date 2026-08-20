@@ -64,4 +64,3 @@ def test_awq_quantizer(tmp_output_dir: Path):
     assert Path(res["config_path"]).exists()
     assert res["bits"] == 4
     assert res["group_size"] == 128
-

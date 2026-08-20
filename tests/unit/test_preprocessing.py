@@ -67,4 +67,3 @@ def test_sequence_packer():
     assert packed["num_blocks"] >= 1
     assert len(packed["input_ids"][0]) == 16
     assert len(packed["attention_mask"][0]) == 16
-

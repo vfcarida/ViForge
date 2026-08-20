@@ -36,4 +36,3 @@ def test_dataset_manifest_integrity(tmp_output_dir: Path):
         source_url="https://local.test/data.jsonl",
     )
     assert ManifestManager.verify_integrity(manifest, sample_file) is True
-

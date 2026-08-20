@@ -40,4 +40,3 @@ def test_evaluator_suites_registered():
 def test_inference_backends_registered():
     mock_backend = backend_registry.get("mock")
     assert isinstance(mock_backend, BaseInferenceBackend)
-

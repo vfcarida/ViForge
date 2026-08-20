@@ -73,4 +73,3 @@ def test_liger_kernel_manager():
     hw = HardwareConfig(accelerator="NVIDIA_A100_80GB")
     backend_info = BackendManager.setup_backend(hw, use_liger=True)
     assert "liger_kernel_active" in backend_info
-

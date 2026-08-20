@@ -35,4 +35,3 @@ def test_cli_list_commands():
     res_e = runner.invoke(app, ["list-evaluators"])
     assert res_e.exit_code == 0
     assert "humaneval_plus" in res_e.stdout
-
