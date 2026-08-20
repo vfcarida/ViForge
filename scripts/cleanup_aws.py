@@ -2,7 +2,7 @@
 ViForge AWS Orphaned Resource Cleanup Script.
 """
 
-from viforge.aws.cleanup import AWSCleanupManager
+from viforge.aws.sagemaker import AWSCleanupManager
 
 
 def main():
