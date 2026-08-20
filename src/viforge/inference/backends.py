@@ -4,7 +4,7 @@ ViForge High-Throughput & Reproducible Inference Backends.
 
 from abc import ABC, abstractmethod
 from pathlib import Path
-from typing import Dict, List, Optional, Type
+from typing import Any, Dict, List, Optional, Type
 from viforge.config.schemas import SamplingParams
 from viforge.utils.logging import logger
 
@@ -159,11 +159,111 @@ class HuggingFaceInferenceBackend(BaseInferenceBackend):
         return completions
 
 
+class VLLMInferenceBackend(BaseInferenceBackend):
+    """vLLM high-throughput inference backend for production serving.
+
+    Activates only when ``vllm`` is installed. If vllm is not installed,
+    instantiation raises ``ImportError`` with a clear install message.
+
+    Usage::
+
+        backend = VLLMInferenceBackend(
+            tensor_parallel_size=1,
+            gpu_memory_utilization=0.90,
+            dtype="bfloat16",
+        )
+        backend.load_model("deepseek-ai/DeepSeek-V4-Pro")
+        completions = backend.generate(prompts, sampling_params)
+    """
+
+    def __init__(
+        self,
+        tensor_parallel_size: int = 1,
+        gpu_memory_utilization: float = 0.90,
+        dtype: str = "auto",
+        trust_remote_code: bool = False,
+        **engine_kwargs: Any,
+    ):
+        try:
+            import vllm  # noqa: F401  — validate at init time
+        except ImportError as exc:
+            raise ImportError(
+                "vLLM is not installed. Install it with: pip install vllm\n"
+                "Note: vLLM requires Linux and a CUDA-capable GPU."
+            ) from exc
+
+        self._tensor_parallel_size = tensor_parallel_size
+        self._gpu_memory_utilization = gpu_memory_utilization
+        self._dtype = dtype
+        self._trust_remote_code = trust_remote_code
+        self._engine_kwargs = engine_kwargs
+        self._llm = None
+        self._model_id: Optional[str] = None
+
+    def load_model(self, model_path_or_id: str, adapter_path: Optional[str] = None) -> None:
+        from vllm import LLM
+
+        logger.info(
+            f"vLLM: loading '{model_path_or_id}' (tensor_parallel={self._tensor_parallel_size})..."
+        )
+
+        engine_args: Dict[str, Any] = {
+            "tensor_parallel_size": self._tensor_parallel_size,
+            "gpu_memory_utilization": self._gpu_memory_utilization,
+            "dtype": self._dtype,
+            "trust_remote_code": self._trust_remote_code,
+            **self._engine_kwargs,
+        }
+
+        # vLLM supports LoRA adapters via enable_lora + LoRARequest at generate time
+        if adapter_path and Path(adapter_path).exists():
+            engine_args["enable_lora"] = True
+            self._adapter_path = adapter_path
+            logger.info(f"vLLM: LoRA adapter will be loaded from '{adapter_path}'.")
+        else:
+            self._adapter_path = None
+
+        self._llm = LLM(model=model_path_or_id, **engine_args)
+        self._model_id = model_path_or_id
+        logger.info(f"vLLM: model '{model_path_or_id}' loaded successfully.")
+
+    def generate(self, prompts: List[str], sampling_params: SamplingParams) -> List[str]:
+        from vllm import SamplingParams as VLLMSamplingParams
+
+        if self._llm is None:
+            raise RuntimeError("Model is not loaded. Call load_model() first.")
+
+        vllm_params = VLLMSamplingParams(
+            temperature=sampling_params.temperature,
+            top_p=sampling_params.top_p,
+            max_tokens=sampling_params.max_new_tokens,
+            seed=sampling_params.seed,
+        )
+
+        lora_request = None
+        if getattr(self, "_adapter_path", None):
+            from vllm.lora.request import LoRARequest
+
+            lora_request = LoRARequest(
+                lora_name="viforge_adapter",
+                lora_int_id=1,
+                lora_path=self._adapter_path,
+            )
+
+        outputs = self._llm.generate(
+            prompts,
+            vllm_params,
+            lora_request=lora_request,
+        )
+        return [output.outputs[0].text for output in outputs]
+
+
 class InferenceBackendRegistry:
     def __init__(self):
         self._backends: Dict[str, Type[BaseInferenceBackend]] = {
             "mock": MockInferenceBackend,
             "huggingface": HuggingFaceInferenceBackend,
+            "vllm": VLLMInferenceBackend,
         }
 
     def register(self, name: str, backend_cls: Type[BaseInferenceBackend]) -> None:
