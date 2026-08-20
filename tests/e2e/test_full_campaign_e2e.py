@@ -20,7 +20,7 @@ def test_full_campaign_e2e_execution(tmp_path: Path, sample_config_path: Path):
 
     assert summary.experiment_id == "deepseek_v4_pro_software_engineering_master"
     assert summary.model_name == "DeepSeek V4 Pro"
-    assert len(summary.stages) == 3
+    assert len(summary.stages) == 5
     assert summary.domain_gain_pct > 0
     assert len(summary.pareto_frontier) >= 2
     assert "HYPOTHESIS CONFIRMED" in summary.verdict

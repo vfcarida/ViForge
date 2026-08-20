@@ -1,15 +1,15 @@
 {
   "experiment_id": "deepseek_v4_pro_software_engineering_master",
   "model_name": "DeepSeek V4 Pro",
-  "timestamp": "2026-08-14T18:29:53.823778Z",
-  "baseline_domain_score": 0.6666666666666666,
+  "timestamp": "2026-08-20T12:02:01.798632Z",
+  "baseline_domain_score": 0.5,
   "specialized_domain_score": 1.0,
-  "domain_gain_pct": 50.000000000000014,
-  "baseline_retention_score": 0.8333333333333334,
-  "specialized_retention_score": 0.8333333333333334,
+  "domain_gain_pct": 100.0,
+  "baseline_retention_score": 0.13333333333333333,
+  "specialized_retention_score": 0.13333333333333333,
   "retention_delta_pct": 0.0,
   "total_training_cost_usd": 0.0,
-  "total_wall_clock_hours": 0.0003,
+  "total_wall_clock_hours": 0.0051,
   "stages": [
     {
       "stage_id": "stage_1_cpt",
@@ -26,7 +26,7 @@
       "estimated_stage_cost_usd": 0.0
     },
     {
-      "stage_id": "stage_2_qlora_sft",
+      "stage_id": "stage_2_qlora_sft_r32",
       "method": "qlora",
       "training_loss": 0.825,
       "eval_loss": 0.862,
@@ -40,7 +40,35 @@
       "estimated_stage_cost_usd": 0.0
     },
     {
-      "stage_id": "stage_3_dpo",
+      "stage_id": "stage_3_lora_sft_r16",
+      "method": "lora",
+      "training_loss": 0.825,
+      "eval_loss": 0.862,
+      "tokens_processed": 204800000,
+      "tokens_per_second": 2400.0,
+      "peak_vram_gb": 28.4,
+      "trainable_parameters": 15000000,
+      "total_parameters": 14500000000,
+      "trainable_ratio_pct": 0.103,
+      "wall_clock_seconds": 1.0,
+      "estimated_stage_cost_usd": 0.0
+    },
+    {
+      "stage_id": "stage_4_lora_sft_r64",
+      "method": "lora",
+      "training_loss": 0.825,
+      "eval_loss": 0.862,
+      "tokens_processed": 204800000,
+      "tokens_per_second": 2400.0,
+      "peak_vram_gb": 28.4,
+      "trainable_parameters": 15000000,
+      "total_parameters": 14500000000,
+      "trainable_ratio_pct": 0.103,
+      "wall_clock_seconds": 1.0,
+      "estimated_stage_cost_usd": 0.0
+    },
+    {
+      "stage_id": "stage_5_dpo",
       "method": "dpo",
       "training_loss": 0.312,
       "eval_loss": 0.345,
@@ -60,10 +88,10 @@
       "pass_at_k": {
         "pass@1": 1.0
       },
-      "total_problems": 3,
-      "passed_problems": 3,
+      "total_problems": 5,
+      "passed_problems": 5,
       "failed_problems": 0,
-      "execution_time_seconds": 0.57,
+      "execution_time_seconds": 2.47,
       "raw_metrics": {
         "pass_rate_pct": 100.0
       }
@@ -73,131 +101,107 @@
       "pass_at_k": {
         "resolved@1": 1.0
       },
-      "total_problems": 2,
-      "passed_problems": 2,
+      "total_problems": 5,
+      "passed_problems": 5,
       "failed_problems": 0,
-      "execution_time_seconds": 0.0,
+      "execution_time_seconds": 0.88,
       "raw_metrics": {
         "resolved_rate_pct": 100.0
       }
     },
     {
-      "benchmark_name": "livecodebench",
-      "pass_at_k": {
-        "pass@1": 1.0
-      },
-      "total_problems": 2,
-      "passed_problems": 2,
-      "failed_problems": 0,
-      "execution_time_seconds": 0.0,
-      "raw_metrics": {
-        "pass_rate_pct": 100.0
-      }
-    },
-    {
       "benchmark_name": "mmlu_pro",
       "pass_at_k": {
-        "acc": 0.5
+        "acc": 0.0
       },
-      "total_problems": 2,
-      "passed_problems": 1,
-      "failed_problems": 1,
-      "execution_time_seconds": 0.0,
+      "total_problems": 5,
+      "passed_problems": 0,
+      "failed_problems": 5,
+      "execution_time_seconds": 1.51,
       "raw_metrics": {
-        "accuracy_pct": 50.0
+        "accuracy_pct": 0.0
       }
     },
     {
       "benchmark_name": "gsm8k",
       "pass_at_k": {
-        "acc": 1.0
+        "acc": 0.0
       },
-      "total_problems": 2,
-      "passed_problems": 2,
-      "failed_problems": 0,
-      "execution_time_seconds": 0.0,
+      "total_problems": 5,
+      "passed_problems": 0,
+      "failed_problems": 5,
+      "execution_time_seconds": 0.87,
       "raw_metrics": {
-        "accuracy_pct": 100.0
+        "accuracy_pct": 0.0
       }
     },
     {
       "benchmark_name": "arc_challenge",
       "pass_at_k": {
-        "acc": 1.0
+        "acc": 0.4
       },
-      "total_problems": 1,
-      "passed_problems": 1,
-      "failed_problems": 0,
-      "execution_time_seconds": 0.0,
+      "total_problems": 5,
+      "passed_problems": 2,
+      "failed_problems": 3,
+      "execution_time_seconds": 0.9,
       "raw_metrics": {
-        "accuracy_pct": 100.0
+        "accuracy_pct": 40.0
       }
     }
   ],
   "statistical_deltas": [
     {
       "metric_name": "humaneval_plus",
+      "baseline_value": 1.0,
+      "specialized_value": 1.0,
+      "absolute_delta": 0.0,
+      "relative_delta_pct": 0.0,
+      "ci_lower": 0.5655,
+      "ci_upper": 1.0,
+      "p_value": 0.25,
+      "is_significant": false
+    },
+    {
+      "metric_name": "swe_bench_lite",
       "baseline_value": 0.0,
       "specialized_value": 1.0,
       "absolute_delta": 1.0,
       "relative_delta_pct": 100.0,
-      "ci_lower": 0.4385,
+      "ci_lower": 0.5655,
       "ci_upper": 1.0,
       "p_value": 0.01,
       "is_significant": true
     },
     {
-      "metric_name": "swe_bench_lite",
-      "baseline_value": 1.0,
-      "specialized_value": 1.0,
-      "absolute_delta": 0.0,
-      "relative_delta_pct": 0.0,
-      "ci_lower": 0.3424,
-      "ci_upper": 1.0,
-      "p_value": 0.25,
-      "is_significant": false
-    },
-    {
-      "metric_name": "livecodebench",
-      "baseline_value": 1.0,
-      "specialized_value": 1.0,
-      "absolute_delta": 0.0,
-      "relative_delta_pct": 0.0,
-      "ci_lower": 0.3424,
-      "ci_upper": 1.0,
-      "p_value": 0.25,
-      "is_significant": false
-    },
-    {
       "metric_name": "mmlu_pro",
-      "baseline_value": 0.5,
-      "specialized_value": 0.5,
+      "baseline_value": 0.0,
+      "specialized_value": 0.0,
       "absolute_delta": 0.0,
       "relative_delta_pct": 0.0,
-      "ci_lower": 0.0945,
-      "ci_upper": 0.9055,
+      "ci_lower": 0.0,
+      "ci_upper": 0.4345,
       "p_value": 0.25,
       "is_significant": false
     },
     {
       "metric_name": "gsm8k",
-      "baseline_value": 1.0,
-      "specialized_value": 1.0,
+      "baseline_value": 0.0,
+      "specialized_value": 0.0,
       "absolute_delta": 0.0,
       "relative_delta_pct": 0.0,
-      "ci_lower": 0.3424,
-      "ci_upper": 1.0,
+      "ci_lower": 0.0,
+      "ci_upper": 0.4345,
       "p_value": 0.25,
       "is_significant": false
     },
     {
       "metric_name": "arc_challenge",
-      "baseline_value": 1.0,
-      "specialized_value": 1.0,
+      "baseline_value": 0.4,
+      "specialized_value": 0.4,
       "absolute_delta": 0.0,
       "relative_delta_pct": 0.0,
-      "ci_lower": 0.2065,
-      "ci_upper": 1.0,
+      "ci_lower": 0.1176,
+      "ci_upper": 0.7693,
       "p_value": 0.25,
       "is_significant": false
     }
@@ -206,8 +210,8 @@
     {
       "model_name": "DeepSeek V4 Pro",
       "stage_or_variant": "Base Baseline",
-      "domain_score": 0.6666666666666666,
-      "general_retention_score": 0.8333333333333334,
+      "domain_score": 0.5,
+      "general_retention_score": 0.13333333333333333,
       "training_cost_usd": 0.0,
       "inference_cost_per_1m": 0.28,
       "latency_p50_ms": 120.0,
@@ -217,18 +221,18 @@
     },
     {
       "model_name": "DeepSeek V4 Pro",
-      "stage_or_variant": "Specialized (cpt+qlora+dpo)",
+      "stage_or_variant": "Specialized (cpt+qlora+lora+lora+dpo)",
       "domain_score": 1.0,
-      "general_retention_score": 0.8333333333333334,
+      "general_retention_score": 0.13333333333333333,
       "training_cost_usd": 0.0,
       "inference_cost_per_1m": 0.28,
       "latency_p50_ms": 124.0,
       "memory_footprint_gb": 28.1,
-      "capability_per_dollar": 125.0,
+      "capability_per_dollar": 250.0,
       "is_pareto_optimal": true
     }
   ],
-  "verdict": "HYPOTHESIS CONFIRMED: Specialization delivered a +50.0% domain improvement while retaining general capability (+0.0%), yielding a superior capability-per-dollar metric (125.00) at $0.00 total training cost.",
+  "verdict": "HYPOTHESIS CONFIRMED: Specialization delivered a +100.0% domain improvement while retaining general capability (+0.0%), yielding a superior capability-per-dollar metric (250.00) at $0.00 total training cost.",
   "limitations_and_disclosures": [
     "Deterministic evaluation with temperature=0.0 and fixed seed=42.",
     "Zero data leakage detected against evaluation benchmarks.",

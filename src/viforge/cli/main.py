@@ -78,8 +78,13 @@ def validate_config(
     )
     console.print(f"  • Model: {manifest.model.name} ({manifest.model.hf_hub_id})")
     console.print(f"  • Stages: {len(manifest.pipeline)}")
+    retention_count = len(
+        manifest.evaluation.retention_benchmarks
+        if manifest.evaluation.retention_benchmarks is not None
+        else (manifest.evaluation.general_retention_benchmarks or [])
+    )
     console.print(
-        f"  • Benchmarks: {len(manifest.evaluation.domain_benchmarks)} domain, {len(manifest.evaluation.general_retention_benchmarks)} retention"
+        f"  • Benchmarks: {len(manifest.evaluation.domain_benchmarks)} domain, {retention_count} retention"
     )
 
 
@@ -153,7 +158,7 @@ def run_compare(
     table.add_column("Benchmark", style="cyan")
     table.add_column("Baseline", style="blue")
     table.add_column("Specialist", style="green")
-    table.add_column("Relative Δ", style="magenta")
+    table.add_column("Relative Delta (%)", style="magenta")
     table.add_column("95% CI", style="yellow")
     table.add_column("Significant", style="bold")
 

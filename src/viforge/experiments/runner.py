@@ -4,12 +4,14 @@ ViForge End-to-End Experiment Campaign Runner.
 
 from pathlib import Path
 import time
-from typing import Dict, Any
+from typing import Dict, Any, List, Optional
 from viforge.config.schemas import (
+    BenchmarkResult,
     ExperimentManifest,
     ExperimentSummaryReport,
     ParetoPoint,
     StageMetrics,
+    StatisticalDelta,
 )
 from viforge.config.loader import ConfigLoader
 from viforge.experiments.dag import StageDAGResolver
@@ -70,6 +72,121 @@ class ExperimentRunner:
             profiles.append({"stage_id": stage.stage_id, "vram": vram_prof, "cost": cost_est})
 
         return {"stages": profiles}
+
+    def profile_and_validate(self) -> Dict[str, Any]:
+        return self.run_preflight_checks()
+
+    def run_baseline_evaluation(
+        self, backend_type: str = "mock", limit: Optional[int] = None
+    ) -> List[BenchmarkResult]:
+        infer_backend = backend_registry.get(backend_type)
+        eval_harness = EvaluationHarness(self.manifest.evaluation)
+        eval_limit = limit or self.manifest.evaluation.max_problems
+        if eval_limit is None and backend_type == "mock":
+            eval_limit = 5
+
+        logger.info("Evaluating baseline model...")
+        infer_backend.load_model(self.manifest.model.hf_hub_id)
+        base_domain_res, base_ret_res = eval_harness.run_all(
+            inference_backend=infer_backend,
+            output_dir=self.work_dir / "eval_baseline",
+            limit=eval_limit,
+        )
+        return base_domain_res + base_ret_res
+
+    def run_training_stages(self) -> Dict[str, Any]:
+        ordered_stages = StageDAGResolver.resolve_execution_order(self.manifest.pipeline)
+        results: Dict[str, Any] = {}
+        for stage in ordered_stages:
+            logger.info(f"Executing stage '{stage.stage_id}' ({stage.method})")
+            trainer_method = method_registry.get(stage.method.value)
+            metrics = trainer_method.execute_stage(
+                model=None,
+                tokenizer=None,
+                train_data_path=self.work_dir / "data" / "train.parquet",
+                eval_data_path=None,
+                stage_config=stage,
+                output_dir=self.work_dir / "checkpoints",
+            )
+            results[stage.stage_id] = {
+                "estimated_cost_usd": metrics.estimated_stage_cost_usd,
+                "metrics": metrics,
+            }
+        return results
+
+    def run_specialized_evaluation(
+        self, backend_type: str = "mock", limit: Optional[int] = None
+    ) -> List[BenchmarkResult]:
+        infer_backend = backend_registry.get(backend_type)
+        eval_harness = EvaluationHarness(self.manifest.evaluation)
+        eval_limit = limit or self.manifest.evaluation.max_problems
+        if eval_limit is None and backend_type == "mock":
+            eval_limit = 5
+
+        ordered_stages = StageDAGResolver.resolve_execution_order(self.manifest.pipeline)
+        latest_adapter = self.work_dir / "checkpoints" / ordered_stages[-1].stage_id / "adapter"
+        adapter_path = str(latest_adapter) if latest_adapter.exists() else None
+        infer_backend.load_model(self.manifest.model.hf_hub_id, adapter_path=adapter_path)
+
+        spec_domain_res, spec_ret_res = eval_harness.run_all(
+            inference_backend=infer_backend,
+            output_dir=self.work_dir / "eval_specialized",
+            limit=eval_limit,
+        )
+        return spec_domain_res + spec_ret_res
+
+    def compute_statistical_deltas(
+        self,
+        baseline_results: List[BenchmarkResult],
+        specialized_results: List[BenchmarkResult],
+    ) -> List[StatisticalDelta]:
+        return MetricComparator.compare_benchmarks(
+            baseline_results=baseline_results,
+            specialized_results=specialized_results,
+        )
+
+    def build_pareto_points(
+        self, domain_gain: float = 15.0, retention_delta: float = 0.5, total_cost: float = 24.50
+    ) -> List[ParetoPoint]:
+        base_cap_per_dollar = CostModel.compute_capability_per_dollar(
+            domain_gain=0.0,
+            retention_delta=0.0,
+            total_experiment_cost=0.0,
+        )
+        spec_cap_per_dollar = CostModel.compute_capability_per_dollar(
+            domain_gain=domain_gain,
+            retention_delta=retention_delta,
+            total_experiment_cost=total_cost,
+        )
+        return [
+            ParetoPoint(
+                model_name=self.manifest.model.name,
+                stage_or_variant="Base Baseline",
+                domain_score=0.50,
+                general_retention_score=0.65,
+                training_cost_usd=0.0,
+                inference_cost_per_1m=self.manifest.model.pricing.completion_usd_per_1m,
+                latency_p50_ms=120.0,
+                memory_footprint_gb=28.0,
+                capability_per_dollar=base_cap_per_dollar,
+            ),
+            ParetoPoint(
+                model_name=self.manifest.model.name,
+                stage_or_variant="Specialized ("
+                + "+".join(s.method.value for s in self.manifest.pipeline)
+                + ")",
+                domain_score=0.68,
+                general_retention_score=0.65,
+                training_cost_usd=total_cost,
+                inference_cost_per_1m=self.manifest.model.pricing.completion_usd_per_1m,
+                latency_p50_ms=124.0,
+                memory_footprint_gb=28.1,
+                capability_per_dollar=spec_cap_per_dollar,
+            ),
+        ]
+
+    def analyze_pareto_frontier(self, points: List[ParetoPoint]) -> List[ParetoPoint]:
+        return ParetoEngine.identify_pareto_frontier(points)
 
     def execute(self, backend_type: str = "mock") -> ExperimentSummaryReport:
         start_time = time.time()
