@@ -36,6 +36,27 @@ class SWEBenchSuite:
                 "prompt": "Repository: pytest-dev/pytest\nIssue: Fixture teardown failure on Windows with tempdir.\nGenerate git unified diff patch:\n",
                 "test": "assert True",
             },
+            {
+                "instance_id": "psf__requests-2148",
+                "repo": "psf/requests",
+                "problem_statement": "socket.error handling on connection reset inside HTTPAdapter.",
+                "prompt": "Repository: psf/requests\nIssue: socket.error handling on connection reset inside HTTPAdapter.\nGenerate git unified diff patch:\n",
+                "test": "assert True",
+            },
+            {
+                "instance_id": "scikit-learn__scikit-learn-10508",
+                "repo": "scikit-learn/scikit-learn",
+                "problem_statement": "LabelEncoder transform failure when input contains unseen categorical strings.",
+                "prompt": "Repository: scikit-learn/scikit-learn\nIssue: LabelEncoder transform failure on unseen strings.\nGenerate git unified diff patch:\n",
+                "test": "assert True",
+            },
+            {
+                "instance_id": "pallets__flask-4045",
+                "repo": "pallets/flask",
+                "problem_statement": "Blueprint name collision when registering subdomains dynamically.",
+                "prompt": "Repository: pallets/flask\nIssue: Blueprint name collision when registering subdomains.\nGenerate git unified diff patch:\n",
+                "test": "assert True",
+            },
         ]
 
     def load_problems(self, limit: Optional[int] = None) -> List[Dict[str, Any]]:
@@ -122,6 +143,21 @@ class MBPPPlusSuite:
                 "task_id": "MBPP/2",
                 "prompt": 'def remove_duplicates(lst: list) -> list:\n    """ Write a function to remove all duplicates from a list while preserving order.\n    """\n',
                 "test": "assert remove_duplicates([1, 2, 2, 3, 4, 3, 5]) == [1, 2, 3, 4, 5]\n",
+            },
+            {
+                "task_id": "MBPP/3",
+                "prompt": 'def is_even(n: int) -> bool:\n    """ Return True if n is even, False otherwise.\n    """\n',
+                "test": "assert is_even(4) == True\nassert is_even(7) == False\n",
+            },
+            {
+                "task_id": "MBPP/4",
+                "prompt": 'def find_max(numbers: list[int]) -> int:\n    """ Return maximum element in numbers.\n    """\n',
+                "test": "assert find_max([1, 8, 3, 12, 4]) == 12\n",
+            },
+            {
+                "task_id": "MBPP/5",
+                "prompt": 'def reverse_words(s: str) -> str:\n    """ Reverse the words in a space-separated string.\n    """\n',
+                "test": "assert reverse_words('hello world') == 'world hello'\n",
             },
         ]
 

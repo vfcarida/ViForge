@@ -35,3 +35,35 @@ def test_cli_list_commands():
     res_e = runner.invoke(app, ["list-evaluators"])
     assert res_e.exit_code == 0
     assert "humaneval_plus" in res_e.stdout
+
+
+@pytest.mark.smoke
+def test_cli_help():
+    res = runner.invoke(app, ["--help"])
+    assert res.exit_code == 0
+    assert "ViForge" in res.stdout
+    assert "doctor" in res.stdout
+    assert "run" in res.stdout
+
+
+@pytest.mark.smoke
+def test_cli_prepare_data_help():
+    res = runner.invoke(app, ["prepare-data", "--help"])
+    assert res.exit_code == 0
+    assert "preset" in res.stdout
+
+
+@pytest.mark.smoke
+def test_cli_generate_sbom(tmp_path):
+    out_sbom = tmp_path / "sbom.json"
+    res = runner.invoke(app, ["generate-sbom", "--output", str(out_sbom)])
+    assert res.exit_code == 0
+    assert out_sbom.exists()
+    assert "CycloneDX SBOM generated" in res.stdout
+
+
+@pytest.mark.smoke
+def test_cli_merge_adapters_help():
+    res = runner.invoke(app, ["merge-adapters", "--help"])
+    assert res.exit_code == 0
+    assert "base_model_id" in res.stdout

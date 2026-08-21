@@ -1,4 +1,4 @@
-.PHONY: install lint format test typecheck clean lock
+.PHONY: install lint format test typecheck clean lock sbom
 
 install:
 	pip install -e .[dev]
@@ -8,7 +8,7 @@ lint:
 	ruff check src/ tests/ scripts/
 
 format:
-	ruff format src/ tests/
+	ruff format src/ tests/ scripts/
 
 test:
 	pytest tests/ -v --cov=src/viforge
@@ -24,3 +24,7 @@ lock:
 	pip-compile pyproject.toml -o requirements/base.lock --generate-hashes --allow-unsafe
 	pip-compile pyproject.toml --extra dev -o requirements/dev.lock --generate-hashes --allow-unsafe
 	pip-compile pyproject.toml --extra dev --extra aws --extra inference -o requirements/all.lock --generate-hashes --allow-unsafe --pip-args "--prefer-binary"
+
+sbom:
+	python scripts/generate_sbom.py
+

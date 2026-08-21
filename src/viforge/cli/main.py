@@ -225,11 +225,14 @@ def run_all(
     mock: bool = typer.Option(
         True, "--mock/--live", help="Use deterministic mock backend for fast CI/test execution"
     ),
+    strict: bool = typer.Option(
+        False, "--strict", help="Enforce strict production mode (fail-fast on any mock or fallback)"
+    ),
 ):
     """Execute complete end-to-end ViForge experimentation campaign."""
     runner = ExperimentRunner.from_yaml(config_path, work_dir)
     backend_type = "mock" if mock else "huggingface"
-    summary = runner.execute(backend_type=backend_type)
+    summary = runner.execute(backend_type=backend_type, strict=strict)
 
     console.print("\n[bold green]=== Campaign Completed Successfully ===[/bold green]")
     console.print(f"[bold]Model:[/bold] {summary.model_name}")
@@ -402,6 +405,53 @@ def prepare_data_cli(
             console.print(f"[green]✓ Prepared {tech.upper()} dataset:[/green] {saved_path}")
 
     console.print("[bold green]Dataset preparation complete![/bold green]")
+
+
+@app.command("generate-sbom")
+def cli_generate_sbom(
+    output_path: Path = typer.Option(
+        Path("dist/sbom.cyclonedx.json"), "--output", "-o", help="Output SBOM path"
+    ),
+    lockfile: Optional[Path] = typer.Option(
+        None, "--lockfile", "-l", help="Specific lockfile to parse"
+    ),
+):
+    """Generate CycloneDX v1.5 JSON Software Bill of Materials (SBOM) for supply-chain attestation."""
+    from viforge.security.sbom import generate_sbom
+
+    root_dir = Path(__file__).parent.parent.parent.parent
+    target_lock = lockfile
+    if not target_lock or not target_lock.exists():
+        target_lock = root_dir / "requirements" / "all.lock"
+        if not target_lock.exists():
+            target_lock = root_dir / "requirements" / "base.lock"
+
+    console.print(Panel.fit("[bold cyan]ViForge Supply-Chain SBOM Generator[/bold cyan]"))
+    console.print(f"Reading lockfile: [green]{target_lock}[/green]")
+    out = generate_sbom(target_lock, output_path)
+    console.print(f"[bold green]✓ CycloneDX SBOM generated successfully:[/bold green] {out}")
+
+
+@app.command("merge-adapters")
+def cli_merge_adapters(
+    base_model_id: str = typer.Argument(..., help="Base HuggingFace model ID or path"),
+    adapter_path: Path = typer.Argument(..., help="Path to LoRA adapter directory"),
+    output_dir: Path = typer.Option(
+        Path("merged_model"), "--output", "-o", help="Target directory for merged weights"
+    ),
+    device: str = typer.Option("cpu", "--device", "-d", help="Device for merging (cpu/cuda)"),
+):
+    """Merge trained LoRA adapters into base model weights for zero-overhead inference."""
+    from viforge.artifacts.merger import AdapterMerger
+
+    console.print(Panel.fit("[bold cyan]ViForge Model & Adapter Merger[/bold cyan]"))
+    out = AdapterMerger.merge_and_export(
+        base_model_id=base_model_id,
+        adapter_path=adapter_path,
+        output_dir=output_dir,
+        device=device,
+    )
+    console.print(f"[bold green]✓ Merged model saved to:[/bold green] {out}")
 
 
 if __name__ == "__main__":

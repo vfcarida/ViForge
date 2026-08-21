@@ -28,6 +28,12 @@ from viforge.training.callbacks import CompositeObservabilityCallback
 from viforge.utils.logging import logger
 
 
+class StrictExecutionError(Exception):
+    """Raised when strict execution mode detects an unauthorized mock backend or fallback."""
+
+    pass
+
+
 class ExperimentRunner:
     """
     Executes a complete ViForge experiment campaign:
@@ -79,6 +85,12 @@ class ExperimentRunner:
     def run_baseline_evaluation(
         self, backend_type: str = "mock", limit: Optional[int] = None
     ) -> List[BenchmarkResult]:
+        if getattr(self.manifest, "strict_mode", False) and backend_type == "mock":
+            raise StrictExecutionError(
+                "Strict execution mode is enabled: MockInferenceBackend cannot be used for baseline evaluation. "
+                "Specify a real backend (e.g. 'huggingface' or 'vllm')."
+            )
+
         infer_backend = backend_registry.get(backend_type)
         eval_harness = EvaluationHarness(self.manifest.evaluation)
         eval_limit = limit or self.manifest.evaluation.max_problems
@@ -117,6 +129,12 @@ class ExperimentRunner:
     def run_specialized_evaluation(
         self, backend_type: str = "mock", limit: Optional[int] = None
     ) -> List[BenchmarkResult]:
+        if getattr(self.manifest, "strict_mode", False) and backend_type == "mock":
+            raise StrictExecutionError(
+                "Strict execution mode is enabled: MockInferenceBackend cannot be used for specialized evaluation. "
+                "Specify a real backend (e.g. 'huggingface' or 'vllm')."
+            )
+
         infer_backend = backend_registry.get(backend_type)
         eval_harness = EvaluationHarness(self.manifest.evaluation)
         eval_limit = limit or self.manifest.evaluation.max_problems
@@ -188,7 +206,16 @@ class ExperimentRunner:
     def analyze_pareto_frontier(self, points: List[ParetoPoint]) -> List[ParetoPoint]:
         return ParetoEngine.identify_pareto_frontier(points)
 
-    def execute(self, backend_type: str = "mock") -> ExperimentSummaryReport:
+    def execute(self, backend_type: str = "mock", strict: bool = False) -> ExperimentSummaryReport:
+        if strict:
+            self.manifest.strict_mode = True
+
+        if getattr(self.manifest, "strict_mode", False) and backend_type == "mock":
+            raise StrictExecutionError(
+                "Strict execution mode is enabled: cannot execute campaign with mock backend. "
+                "Specify a real inference backend (e.g. 'huggingface' or 'vllm')."
+            )
+
         start_time = time.time()
         logger.info(f"=== Starting ViForge Experiment: {self.manifest.experiment_id} ===")
 
@@ -198,6 +225,7 @@ class ExperimentRunner:
             cost_tracking=self.manifest.cost_tracking,
             experiment_id=self.manifest.experiment_id,
         )
+
         obs_callback.on_experiment_start(
             config={
                 "model": self.manifest.model.hf_hub_id,

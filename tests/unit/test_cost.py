@@ -80,3 +80,41 @@ def test_statistical_metrics():
 
     rel_delta_zero = compute_relative_delta(0.0, 0.50)
     assert rel_delta_zero == 100.0
+
+
+@pytest.mark.unit
+def test_pass_at_k_estimation():
+    from viforge.metrics.statistical import compute_pass_at_k_distribution, estimate_pass_at_k
+
+    # Test c=0 -> 0.0
+    assert estimate_pass_at_k(n=10, c=0, k=1) == 0.0
+    assert estimate_pass_at_k(n=10, c=0, k=5) == 0.0
+
+    # Test c=n -> 1.0
+    assert estimate_pass_at_k(n=10, c=10, k=1) == 1.0
+    assert estimate_pass_at_k(n=10, c=10, k=5) == 1.0
+
+    # Test n=10, c=1, k=1 -> 1/10 = 0.10
+    assert estimate_pass_at_k(n=10, c=1, k=1) == 0.10
+
+    # Test n=10, c=5, k=1 -> 0.50
+    assert estimate_pass_at_k(n=10, c=5, k=1) == 0.50
+
+    # Test n - c < k -> 1.0 (e.g. n=10, c=8, k=5 -> 10-8=2 < 5)
+    assert estimate_pass_at_k(n=10, c=8, k=5) == 1.0
+
+    # Test ValueError when n < k
+    with pytest.raises(ValueError, match="Total samples n"):
+        estimate_pass_at_k(n=3, c=1, k=5)
+
+    # Test distribution computation across multiple problems
+    problem_results = [
+        [True, False, False, False, False],  # problem 1: c=1/5
+        [True, True, True, True, True],  # problem 2: c=5/5
+        [False, False, False, False, False],  # problem 3: c=0/5
+    ]
+    dist = compute_pass_at_k_distribution(problem_results, k_list=[1, 5])
+    assert "pass@1" in dist
+    assert "pass@5" in dist
+    assert 0.0 < dist["pass@1"] < 1.0
+    assert 0.0 < dist["pass@5"] <= 1.0

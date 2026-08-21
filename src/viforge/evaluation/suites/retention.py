@@ -73,6 +73,28 @@ class MMLUProRetentionSuite:
                 "answer": "C",
                 "prompt": "Question: If a matrix A has determinant 0, which of the following is true?\n(A) A is invertible\n(B) A is non-singular\n(C) A has linearly dependent rows\n(D) Trace(A) = 0\nAnswer:",
             },
+            {
+                "question": "Which sorting algorithm exhibits an average-case time complexity of O(n log n)?",
+                "options": [
+                    "Bubble Sort",
+                    "Merge Sort",
+                    "Insertion Sort",
+                    "Selection Sort",
+                ],
+                "answer": "B",
+                "prompt": "Question: Which sorting algorithm exhibits an average-case time complexity of O(n log n)?\n(A) Bubble Sort\n(B) Merge Sort\n(C) Insertion Sort\n(D) Selection Sort\nAnswer:",
+            },
+            {
+                "question": "In transformer neural networks, what is the computational complexity of standard self-attention with respect to sequence length N?",
+                "options": [
+                    "O(N)",
+                    "O(N log N)",
+                    "O(N^2)",
+                    "O(N^3)",
+                ],
+                "answer": "C",
+                "prompt": "Question: In transformer neural networks, what is the computational complexity of standard self-attention with respect to sequence length N?\n(A) O(N)\n(B) O(N log N)\n(C) O(N^2)\n(D) O(N^3)\nAnswer:",
+            },
         ]
 
     def load_problems(self, limit: Optional[int] = None) -> List[Dict[str, Any]]:
@@ -179,6 +201,16 @@ class GSM8KRetentionSuite:
                 "question": "Weng earns $12 an hour for babysitting. Yesterday, she babysat for 50 minutes. How much did she earn?",
                 "answer": "10",
                 "prompt": "Question: Weng earns $12 an hour for babysitting. Yesterday, she babysat for 50 minutes. How much did she earn?\nAnswer:",
+            },
+            {
+                "question": "A baker made 24 chocolate chip cookies and 36 oatmeal cookies. If he packs them equally into 6 boxes, how many cookies are in each box?",
+                "answer": "10",
+                "prompt": "Question: A baker made 24 chocolate chip cookies and 36 oatmeal cookies. If he packs them equally into 6 boxes, how many cookies are in each box?\nAnswer:",
+            },
+            {
+                "question": "James buys 3 packs of trading cards with 15 cards each. He gives 10 cards to his brother. How many cards does James have left?",
+                "answer": "35",
+                "prompt": "Question: James buys 3 packs of trading cards with 15 cards each. He gives 10 cards to his brother. How many cards does James have left?\nAnswer:",
             },
         ]
 
@@ -299,6 +331,18 @@ class ARCChallengeRetentionSuite:
                 "choices": ["mass", "shape", "volume", "color"],
                 "answer": "A",
                 "prompt": "Question: Which property of an object most affects how it responds to the force of gravity?\n(A) mass (B) shape (C) volume (D) color\nAnswer:",
+            },
+            {
+                "question": "Which of the following is a renewable energy source?",
+                "choices": ["coal", "solar", "petroleum", "natural gas"],
+                "answer": "B",
+                "prompt": "Question: Which of the following is a renewable energy source?\n(A) coal (B) solar (C) petroleum (D) natural gas\nAnswer:",
+            },
+            {
+                "question": "What process causes rocks on Earth's surface to break down into smaller pieces over time?",
+                "choices": ["photosynthesis", "weathering", "subduction", "condensation"],
+                "answer": "B",
+                "prompt": "Question: What process causes rocks on Earth's surface to break down into smaller pieces over time?\n(A) photosynthesis (B) weathering (C) subduction (D) condensation\nAnswer:",
             },
         ]
 

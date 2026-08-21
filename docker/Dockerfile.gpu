@@ -5,6 +5,10 @@ ENV DEBIAN_FRONTEND=noninteractive \
     PYTHONUNBUFFERED=1 \
     PIP_NO_CACHE_DIR=1
 
+# Create non-root system user and group
+RUN groupadd --gid 10001 appgroup && \
+    useradd --uid 10001 --gid 10001 --create-home --shell /bin/bash appuser
+
 WORKDIR /workspace
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -19,12 +23,16 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 RUN ln -s /usr/bin/python3.11 /usr/bin/python
 
-COPY pyproject.toml /workspace/
+COPY pyproject.toml README.md /workspace/
 COPY src/ /workspace/src/
 COPY configs/ /workspace/configs/
 
 RUN pip install --upgrade pip setuptools wheel && \
-    pip install -e .[all]
+    pip install -e .[all] && \
+    chown -R appuser:appgroup /workspace
+
+USER appuser
 
 ENTRYPOINT ["viforge"]
 CMD ["doctor"]
+

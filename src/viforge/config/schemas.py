@@ -256,6 +256,9 @@ class EvaluationConfig(BaseModel):
         0.90, description="Max 10% degradation acceptable (score ratio >= 0.90)"
     )
     sandbox_backend: Literal["docker", "gvisor", "subprocess"] = "docker"
+    strict_mode: bool = Field(
+        False, description="Whether to fail fast on mock backends and synthetic fallback metrics"
+    )
 
 
 class RetentionResult(BaseModel):
@@ -289,6 +292,9 @@ class ExperimentManifest(BaseModel):
     )
     evaluation: EvaluationConfig = Field(default_factory=EvaluationConfig)
     cost_tracking: CostTrackingConfig = Field(default_factory=CostTrackingConfig)
+    strict_mode: bool = Field(
+        False, description="Enforce strict production execution (fail-fast on any mock)"
+    )
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 

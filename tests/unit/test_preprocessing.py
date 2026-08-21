@@ -41,7 +41,7 @@ def test_minhash_deduplication():
 
 @pytest.mark.unit
 def test_contamination_detector():
-    detector = ContaminationDetector(ngram_size=5)
+    detector = ContaminationDetector(ngram_size=5, max_allowed_overlap=0.10)
     detector.register_benchmark_corpus(
         "humaneval",
         [
@@ -56,6 +56,23 @@ def test_contamination_detector():
     leaked_sample = "def has_close_elements(numbers: list[float], threshold: float) -> bool:\n    for i in numbers: pass"
     overlaps_leaked = detector.check_sample(leaked_sample)
     assert overlaps_leaked["humaneval"] > 0.5
+
+    # Parameter validation checks
+    with pytest.raises(ValueError, match="ngram_size must be positive"):
+        ContaminationDetector(ngram_size=0)
+
+    with pytest.raises(ValueError, match="max_allowed_overlap must be in range"):
+        ContaminationDetector(max_allowed_overlap=1.5)
+
+    # Filter dataset check
+    records = [
+        {"id": "clean_1", "text": clean_sample},
+        {"id": "leaked_1", "text": leaked_sample},
+    ]
+    clean_recs, stats = detector.filter_dataset(records)
+    assert len(clean_recs) == 1
+    assert clean_recs[0]["id"] == "clean_1"
+    assert stats["contaminated_records_removed"] == 1
 
 
 @pytest.mark.unit
