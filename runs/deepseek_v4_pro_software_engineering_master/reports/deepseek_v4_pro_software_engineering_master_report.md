@@ -1,7 +1,7 @@
 # ViForge Experiment Report: `deepseek_v4_pro_software_engineering_master`
 
 **Model Base:** `DeepSeek V4 Pro`
-**Timestamp:** `2026-08-20T12:02:01.798632+00:00`
+**Timestamp:** `2026-08-26T14:16:02.186973+00:00`
 **Total Training Cost:** `$0.00`
 **Total Wall-Clock Time:** `0.01 hrs`
 
@@ -45,11 +45,11 @@
 
 | Benchmark | Metrics / Pass@k | Passed / Total | Exec Time |
 | :--- | :--- | :--- | :--- |
-| **humaneval_plus** | {"pass@1": 1.0} | 5/5 | 2.5s |
+| **humaneval_plus** | {"pass@1": 1.0} | 5/5 | 5.0s |
 | **swe_bench_lite** | {"resolved@1": 1.0} | 5/5 | 0.9s |
-| **mmlu_pro** | {"acc": 0.0} | 0/5 | 1.5s |
-| **gsm8k** | {"acc": 0.0} | 0/5 | 0.9s |
-| **arc_challenge** | {"acc": 0.4} | 2/5 | 0.9s |
+| **mmlu_pro** | {"acc": 0.0} | 0/5 | 2.0s |
+| **gsm8k** | {"acc": 0.0} | 0/5 | 1.0s |
+| **arc_challenge** | {"acc": 0.4} | 2/5 | 1.0s |
 
 ---
 

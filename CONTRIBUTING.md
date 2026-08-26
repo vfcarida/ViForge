@@ -17,6 +17,9 @@ source .venv/bin/activate  # On Windows: .venv\Scripts\activate
 
 # Install in editable mode with development dependencies
 pip install -e .[dev]
+
+# Install pre-commit hooks
+pre-commit install
 ```
 
 ---

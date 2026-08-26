@@ -23,7 +23,7 @@ app = typer.Typer(
     help="ViForge: Forging Small Models into Specialists — Production Experimentation Platform.",
     add_completion=False,
 )
-console = Console()
+console = Console(safe_box=True)
 
 
 @app.command("doctor")
@@ -88,20 +88,6 @@ def validate_config(
     )
 
 
-@app.command("prepare-data")
-def prepare_data(
-    config_path: Path = typer.Argument(..., help="Path to experiment YAML manifest"),
-):
-    """Ingest, deduplicate, and decontaminate dataset records according to manifest."""
-    console.print(f"[bold cyan]Preparing and validating datasets for:[/bold cyan] {config_path}")
-    manifest = ConfigLoader.load_manifest(config_path)
-    for stage in manifest.pipeline:
-        console.print(
-            f"  [green]✓[/green] Ingested and verified dataset [bold]{stage.dataset.id}[/bold] (Split: {stage.dataset.split})"
-        )
-    console.print("[bold green]Dataset preparation complete.[/bold green]")
-
-
 @app.command("baseline")
 def run_baseline(
     config_path: Path = typer.Argument(..., help="Path to experiment YAML manifest"),
@@ -127,7 +113,7 @@ def run_train(
     results = runner.run_training_stages()
     for stage_id, res in results.items():
         console.print(
-            f"  [green]✓[/green] Stage [bold]{stage_id}[/bold] completed. Cost: ${res.get('estimated_cost_usd', 0):.2f}"
+            f"  [green][OK][/green] Stage [bold]{stage_id}[/bold] completed. Cost: ${res.get('estimated_cost_usd', 0):.2f}"
         )
 
 
@@ -326,6 +312,9 @@ def list_evaluators():
 
 @app.command("prepare-data")
 def prepare_data_cli(
+    config_or_domain: Optional[str] = typer.Argument(
+        None, help="Path to domain YAML preset or domain preset name (e.g. software_engineering)"
+    ),
     domain: Optional[str] = typer.Option(
         None, "--domain", "-d", help="Domain preset name (e.g. software_engineering)"
     ),
@@ -356,6 +345,12 @@ def prepare_data_cli(
     target_preset = None
     if config_path:
         target_preset = load_domain_preset(config_path)
+    elif config_or_domain:
+        candidate_path = Path(config_or_domain)
+        if candidate_path.exists() or config_or_domain.endswith((".yaml", ".yml")):
+            target_preset = load_domain_preset(candidate_path)
+        else:
+            target_preset = load_domain_preset(config_or_domain)
     elif domain:
         target_preset = load_domain_preset(domain)
     else:
@@ -402,7 +397,7 @@ def prepare_data_cli(
                 else f"{target_preset.domain}_{tech}.jsonl"
             )
             saved_path = preparer.save(output_dir / out_name)
-            console.print(f"[green]✓ Prepared {tech.upper()} dataset:[/green] {saved_path}")
+            console.print(f"[green][OK] Prepared {tech.upper()} dataset:[/green] {saved_path}")
 
     console.print("[bold green]Dataset preparation complete![/bold green]")
 
@@ -429,7 +424,7 @@ def cli_generate_sbom(
     console.print(Panel.fit("[bold cyan]ViForge Supply-Chain SBOM Generator[/bold cyan]"))
     console.print(f"Reading lockfile: [green]{target_lock}[/green]")
     out = generate_sbom(target_lock, output_path)
-    console.print(f"[bold green]✓ CycloneDX SBOM generated successfully:[/bold green] {out}")
+    console.print(f"[bold green][OK] CycloneDX SBOM generated successfully:[/bold green] {out}")
 
 
 @app.command("merge-adapters")
@@ -451,7 +446,7 @@ def cli_merge_adapters(
         output_dir=output_dir,
         device=device,
     )
-    console.print(f"[bold green]✓ Merged model saved to:[/bold green] {out}")
+    console.print(f"[bold green][OK] Merged model saved to:[/bold green] {out}")
 
 
 if __name__ == "__main__":

@@ -68,6 +68,8 @@ venv.bak/
 runs/
 exports/
 checkpoints/
+data/
+dist/
 *.safetensors
 *.bin
 *.pt

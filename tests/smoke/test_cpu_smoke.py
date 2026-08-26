@@ -67,3 +67,44 @@ def test_cli_merge_adapters_help():
     res = runner.invoke(app, ["merge-adapters", "--help"])
     assert res.exit_code == 0
     assert "base_model_id" in res.stdout
+
+
+@pytest.mark.smoke
+def test_cli_no_duplicate_commands():
+    """Verify that all registered CLI subcommands in Typer app are unique."""
+    command_names = [cmd.name for cmd in app.registered_commands]
+    assert len(command_names) == len(set(command_names)), (
+        f"Duplicate commands found: {command_names}"
+    )
+
+
+@pytest.mark.smoke
+def test_cli_prepare_data_positional(tmp_path):
+    """Verify prepare-data accepts a positional preset config file."""
+    out_dir = tmp_path / "data_pos"
+    config_file = "configs/domains/software_engineering.yaml"
+    res = runner.invoke(
+        app,
+        [
+            "prepare-data",
+            config_file,
+            "--output",
+            str(out_dir),
+            "--max-samples",
+            "1",
+            "--technique",
+            "sft",
+        ],
+    )
+    assert res.exit_code == 0
+    assert "[OK] Prepared SFT" in res.stdout
+
+
+@pytest.mark.smoke
+def test_cli_windows_charmap_encodable():
+    """Verify that CLI outputs contain no problematic unicode symbols (e.g. checkmark glyphs)."""
+    for cmd in [["--help"], ["doctor"], ["prepare-data", "--help"], ["generate-sbom", "--help"]]:
+        res = runner.invoke(app, cmd)
+        assert res.exit_code == 0
+        assert "\u2713" not in res.stdout
+        assert "✓" not in res.stdout

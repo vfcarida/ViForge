@@ -9,7 +9,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![CI Status](https://img.shields.io/badge/CI-Passing-brightgreen.svg)]()
 [![Code Style: Ruff](https://img.shields.io/badge/code%20style-ruff-000000.svg)](https://github.com/astral-sh/ruff)
-[![Tests: 30/30 Passed](https://img.shields.io/badge/tests-30%2F30%20passed-success.svg)]()
+[![Tests: 105/105 Passed](https://img.shields.io/badge/tests-105%2F105%20passed-success.svg)]()
 [![Deployment: GGUF / Ollama / vLLM](https://img.shields.io/badge/deployment-GGUF%20%7C%20Ollama%20%7C%20vLLM-purple.svg)]()
 
 <p align="center">
@@ -292,7 +292,7 @@ ViForge/
 │       └── utils/               # Rich logging, System diagnostics doctor, SHA-256 hashing
 ├── configs/                     # YAML configuration manifests for models, datasets, methods, and runs
 ├── docs/                        # Complete architecture, research, audit, ADRs, and testing guides
-├── tests/                       # Unit, contract, integration, smoke, and e2e test suites (30 tests)
+├── tests/                       # Unit, contract, integration, smoke, and e2e test suites (105 tests)
 ├── docker/                      # Multi-stage Dockerfile, CPU, and GPU CUDA 12.2 container images
 ├── examples/                    # Python API quickstart and custom benchmark plugin authoring
 ├── requirements/                # Cryptographically pinned lockfiles (base.lock, dev.lock, all.lock)
@@ -307,7 +307,7 @@ ViForge/
 ViForge is built with rigorous test-driven engineering. All tests run offline with deterministic fakes and zero external API dependencies:
 
 ```bash
-# Run full test suite (30/30 passing)
+# Run full test suite (105/105 passing)
 pytest tests/ -v
 
 # Run with test coverage report
