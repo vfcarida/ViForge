@@ -212,3 +212,43 @@ def test_cli_prepare_data_command(tmp_path: Path):
     assert "Dataset preparation complete" in res.output
     generated_files = list(out_dir.glob("*.jsonl"))
     assert len(generated_files) >= 1
+
+
+@pytest.mark.unit
+def test_dataset_preparer_secrets_and_contamination(tmp_path: Path):
+    raw_data = [
+        {
+            "instruction": "Here is an AWS key: AKIAIOSFODNN7EXAMPLE and email test@example.com",
+            "output": "Processed secret and user info successfully.",
+        },
+        {
+            "instruction": "Explain sorting algorithms.",
+            "output": "Quicksort is a divide and conquer algorithm.",
+        },
+    ]
+    raw_file = tmp_path / "raw_secrets.jsonl"
+    with open(raw_file, "w", encoding="utf-8") as f:
+        for r in raw_data:
+            f.write(json.dumps(r) + "\n")
+
+    cfg = DatasetConfig(
+        domain="software_engineering",
+        source=str(raw_file),
+        format="sft",
+        min_length=10,
+        scan_secrets=True,
+        scan_pii=True,
+        decontaminate=False,
+    )
+    preparer = DatasetPreparer(cfg)
+    prepared = preparer.prepare()
+
+    assert len(prepared) == 2
+    secret_rec = next(r for r in prepared if "AWS key" in r["messages"][0]["content"])
+    user_msg = secret_rec["messages"][0]["content"]
+    assert "AKIAIOSFODNN7EXAMPLE" not in user_msg
+    assert "<REDACTED_SECRET_AWS_ACCESS_KEY>" in user_msg
+    assert "test@example.com" not in user_msg
+    assert "<REDACTED_PII_EMAIL>" in user_msg
+
+

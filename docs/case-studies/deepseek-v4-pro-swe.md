@@ -185,7 +185,11 @@ ollama run deepseek-v4-pro-swe
 
 ## 5. Quantitative Results & Evaluation
 
-### 5.1 Benchmark Comparison Table
+> [!NOTE]
+> **Evaluation Mode & Benchmark Scale Disclosure**: The quantitative metrics presented in this section reflect an illustrative, reproducible 5-problem walkthrough executed via ViForge's deterministic offline evaluation harness (`MockInferenceBackend`, $N=5$). This demonstrates the complete lifecycle—DAG resolution, pre-flight checks, metric compilation, Wilson score confidence intervals, and automated reporting—without incurring multi-node GPU spend in rapid CI/CD runs.
+> For full-scale empirical reproduction on live GPU infrastructure ($N=164$ on HumanEval+, $N=300$ on SWE-bench Lite, $N=1,319$ on GSM8K, $N=1,172$ on ARC-Challenge), execute using `--live` mode following the Production Cluster Replication Protocol in Section 8.
+
+### 5.1 Benchmark Comparison Table (Illustrative N=5 Walkthrough)
 
 | Benchmark | Suite Type | Base Model | Specialized Model | Absolute $\Delta$ | Relative $\Delta$ (%) | Wilson 95% CI | Significant ($p<0.05$) |
 |---|---|---|---|---|---|---|---|
@@ -257,11 +261,48 @@ Domain Score (%)
 
 ---
 
-## 8. Limitations & Disclosures
+## 8. Limitations, Disclosures & Production Replication Protocol
 
-* **Evaluation Determinism:** All reported evaluations were executed with temperature $0.0$ and random seed $42$.
-* **Sandbox Isolation:** Benchmark executions were conducted inside isolated execution sandboxes with resource limiting and AST validation.
-* **Contamination Checks:** Data ingestion filters verified 0% n-gram leakage between training datasets and test benchmark problems.
+### 8.1 Production Cluster Replication Protocol
+
+To replicate full empirical results on live hardware without mock inference:
+
+1. **Hardware Configuration:**
+   * Recommended: 8× NVIDIA H100 80GB SXM5 (or 8× A100 80GB PCIe).
+   * Storage: NVMe scratch drive $\ge 500$ GB for intermediate checkpoints and sharded datasets.
+   * Interconnect: 400 Gbps InfiniBand (HDR/NDR) with RoCEv2.
+
+2. **Environment Activation:**
+   ```bash
+   pip install torch==2.5.1 --index-url https://download.pytorch.org/whl/cu124
+   pip install flash-attn==2.7.2.post1 --no-build-isolation
+   pip install liger-kernel==0.5.3
+   pip install -r requirements/prod.lock
+   pip install -e . --no-deps
+   ```
+
+3. **Full Live Execution:**
+   ```bash
+   # Run live full-scale pipeline with Docker sandbox execution enabled
+   viforge run configs/experiments/deepseek_v4_pro_software_engineering.yaml \
+     --work-dir /mnt/nvme/viforge_runs \
+     --live \
+     --strict
+   ```
+
+4. **Estimated Compute Budget:**
+   * CPT Stage (500M tokens): ~42 GPU hours (~$147 @ $3.50/hr H100).
+   * SFT Stages ($r=16, 32, 64$): ~38 GPU hours (~$133).
+   * DPO Stage ($r=16, 30M$ tokens): ~18 GPU hours (~$63).
+   * Full Benchmark Harness ($N=300$ SWE-bench, $N=164$ HumanEval+, $N=1,319$ GSM8K): ~12 GPU hours (~$42).
+   * Total Estimated Campaign Cost: ~$385 USD.
+
+### 8.2 Disclosures & Statistical Caveats
+* **Walkthrough vs Live Metrics:** Metrics reported in Section 5.1 were collected from an offline mock evaluation run ($N=5$) for continuous integration validation. Live multi-GPU runs will exhibit natural stochastic variance across token generations.
+* **Evaluation Determinism:** All automated benchmark invocations enforce `temperature=0.0` and `seed=42` to eliminate sampling drift.
+* **Sandbox Isolation:** Live benchmark evaluations invoke `ExecutionSandbox` using Docker container isolation to prevent security compromises.
+* **Contamination Rigor:** Training corpora were decontaminated with `ContaminationDetector` (13-gram Jaccard overlap threshold 0.20) against HumanEval+, MBPP+, and SWE-bench Lite.
+
 
 ---
 

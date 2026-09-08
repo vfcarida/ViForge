@@ -118,3 +118,66 @@ def test_pass_at_k_estimation():
     assert "pass@5" in dist
     assert 0.0 < dist["pass@1"] < 1.0
     assert 0.0 < dist["pass@5"] <= 1.0
+
+
+@pytest.mark.unit
+def test_mcnemar_and_metric_comparator():
+    from viforge.config.schemas import BenchmarkResult
+    from viforge.metrics.comparison import MetricComparator
+    from viforge.metrics.statistical import mcnemar_test, two_proportion_z_test
+
+    # 1. McNemar edge cases
+    stat0, p0 = mcnemar_test(0, 0)
+    assert p0 == 1.0
+
+    stat_sym, p_sym = mcnemar_test(10, 10)
+    assert p_sym == 1.0
+
+    # Strong asymmetry with small sample (exact binomial)
+    stat_exact, p_exact = mcnemar_test(0, 8)
+    assert p_exact < 0.05
+    assert p_exact == round(2.0 * (0.5**8), 6)
+
+    # Large sample (chi-squared approximation with Edwards correction)
+    stat_large, p_large = mcnemar_test(5, 30)
+    assert p_large < 0.001
+
+    # 2. Two-proportion z-test
+    _, p_z = two_proportion_z_test(10, 100, 50, 100)
+    assert p_z < 0.001
+
+    # 3. MetricComparator integration
+    base_res = [
+        BenchmarkResult(
+            benchmark_name="swe_bench_lite",
+            pass_at_k={"resolved@1": 0.20},
+            total_problems=10,
+            passed_problems=2,
+            failed_problems=8,
+            execution_time_seconds=5.0,
+            raw_metrics={"problem_outcomes": [True, True] + [False] * 8},
+        )
+    ]
+    spec_res = [
+        BenchmarkResult(
+            benchmark_name="swe_bench_lite",
+            pass_at_k={"resolved@1": 0.80},
+            total_problems=10,
+            passed_problems=8,
+            failed_problems=2,
+            execution_time_seconds=5.0,
+            raw_metrics={"problem_outcomes": [True] * 8 + [False] * 2},
+        )
+    ]
+
+    deltas = MetricComparator.compare_benchmarks(base_res, spec_res)
+    assert len(deltas) == 1
+    d = deltas[0]
+    assert d.metric_name == "swe_bench_lite"
+    assert d.baseline_value == 0.20
+    assert d.specialized_value == 0.80
+    assert d.absolute_delta == 0.60
+    assert d.p_value is not None
+    assert d.p_value < 0.05
+    assert d.is_significant is True
+

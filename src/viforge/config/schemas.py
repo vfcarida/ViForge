@@ -141,6 +141,9 @@ class DatasetConfig(BaseModel):
         0.85, ge=0.0, le=1.0, description="MinHash Jaccard similarity threshold"
     )
     quality_filter: bool = Field(True, description="Enable domain quality heuristics filter")
+    decontaminate: bool = Field(True, description="Enable 10-gram benchmark contamination scan")
+    scan_secrets: bool = Field(True, description="Enable automated secrets scanning and redaction")
+    scan_pii: bool = Field(True, description="Enable automated PII scanning and redaction")
 
 
 class DomainPresetDatasetItem(BaseModel):

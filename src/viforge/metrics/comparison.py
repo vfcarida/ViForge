@@ -4,7 +4,12 @@ ViForge Base vs Specialist Metric Comparison Engine.
 
 from typing import List
 from viforge.config.schemas import BenchmarkResult, StatisticalDelta
-from viforge.metrics.statistical import compute_relative_delta, wilson_score_interval
+from viforge.metrics.statistical import (
+    compute_relative_delta,
+    mcnemar_test,
+    two_proportion_z_test,
+    wilson_score_interval,
+)
 
 
 class MetricComparator:
@@ -32,8 +37,35 @@ class MetricComparator:
             rel_delta = compute_relative_delta(base_val, spec_val)
             ci_low, ci_high = wilson_score_interval(spec_b.passed_problems, spec_b.total_problems)
 
-            # Significant if CI lower bound exceeds baseline value
-            is_sig = ci_low > base_val if abs_delta > 0 else ci_high < base_val
+            p_val = 1.0
+            if base_b:
+                base_outcomes = base_b.raw_metrics.get("problem_outcomes")
+                spec_outcomes = spec_b.raw_metrics.get("problem_outcomes")
+                if (
+                    isinstance(base_outcomes, list)
+                    and isinstance(spec_outcomes, list)
+                    and len(base_outcomes) == len(spec_outcomes)
+                ):
+                    b_disc = sum(1 for bo, so in zip(base_outcomes, spec_outcomes) if bo and not so)
+                    c_disc = sum(1 for bo, so in zip(base_outcomes, spec_outcomes) if not bo and so)
+                    _, p_val = mcnemar_test(b_disc, c_disc)
+                elif base_b.total_problems == spec_b.total_problems:
+                    b_disc = max(0, base_b.passed_problems - spec_b.passed_problems)
+                    c_disc = max(0, spec_b.passed_problems - base_b.passed_problems)
+                    _, p_val = mcnemar_test(b_disc, c_disc)
+                else:
+                    _, p_val = two_proportion_z_test(
+                        base_b.passed_problems,
+                        base_b.total_problems,
+                        spec_b.passed_problems,
+                        spec_b.total_problems,
+                    )
+
+            # A result is statistically significant if p < 0.05 and improvement is observed,
+            # or if confidence interval lower bound strictly exceeds baseline for positive delta
+            is_sig = (p_val < 0.05 and abs_delta > 0) or (
+                ci_low > base_val if abs_delta > 0 else ci_high < base_val
+            )
 
             delta = StatisticalDelta(
                 metric_name=name,
@@ -43,9 +75,10 @@ class MetricComparator:
                 relative_delta_pct=rel_delta,
                 ci_lower=ci_low,
                 ci_upper=ci_high,
-                p_value=0.01 if is_sig else 0.25,
+                p_value=round(p_val, 4),
                 is_significant=is_sig,
             )
             deltas.append(delta)
 
         return deltas
+

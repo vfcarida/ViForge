@@ -105,3 +105,14 @@ def test_aws_cleanup_manager_dry_run():
         assert res["dry_run"] is True
         assert res["status"] == "DryRunComplete"
         assert not mock_client.stop_training_job.called
+
+
+def test_sagemaker_generate_entrypoint(tmp_path):
+    """Test generating standalone container entrypoint script."""
+    entrypoint_path = tmp_path / "sagemaker_entrypoint.py"
+    res_path = SageMakerRunner.generate_entrypoint_script(entrypoint_path)
+    assert res_path.exists()
+    content = res_path.read_text(encoding="utf-8")
+    assert "SM_MODEL_DIR" in content
+    assert "ExperimentRunner" in content
+

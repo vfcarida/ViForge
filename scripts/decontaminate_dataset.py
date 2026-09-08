@@ -28,6 +28,7 @@ def main():
 
     print("Running 10-gram benchmark contamination detector...")
     detector = ContaminationDetector()
+    detector.load_default_benchmark_banks()
     clean_records, contam_stats = detector.filter_dataset(deduped_records)
 
     print(f"Saving {len(clean_records)} clean records to {out_path}...")

@@ -48,6 +48,33 @@ class ContaminationDetector:
             f"Registered benchmark '{benchmark_name}' with {len(bank)} unique {self.ngram_size}-grams."
         )
 
+    def load_default_benchmark_banks(self) -> None:
+        """
+        Populate default benchmark banks from registered evaluators and offline benchmark suites.
+        """
+        try:
+            from viforge.evaluation.suites.humaneval_plus import HumanEvalPlusSuite
+            from viforge.evaluation.suites.swe_bench import MBPPPlusSuite, SWEBenchSuite
+
+            he_suite = HumanEvalPlusSuite()
+            he_probs = he_suite.load_problems(limit=100)
+            he_texts = [p.get("prompt", "") + " " + p.get("test", "") for p in he_probs]
+            self.register_benchmark_corpus("humaneval_plus", he_texts)
+
+            mbpp_suite = MBPPPlusSuite()
+            mbpp_probs = mbpp_suite.load_problems(limit=100)
+            mbpp_texts = [p.get("prompt", "") + " " + p.get("test", "") for p in mbpp_probs]
+            self.register_benchmark_corpus("mbpp_plus", mbpp_texts)
+
+            swe_suite = SWEBenchSuite()
+            swe_probs = swe_suite.load_problems(limit=100)
+            swe_texts = [
+                p.get("prompt", "") + " " + p.get("problem_statement", "") for p in swe_probs
+            ]
+            self.register_benchmark_corpus("swe_bench_lite", swe_texts)
+        except Exception as e:
+            logger.debug(f"Default benchmark bank loading notice: {e}")
+
     def check_sample(self, text: str) -> Dict[str, float]:
         tokens = self._normalize_tokens(text)
         sample_ngrams = self._extract_ngrams(tokens)

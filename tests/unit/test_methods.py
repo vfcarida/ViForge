@@ -16,14 +16,14 @@ from viforge.config.schemas import (
 from viforge.methods.base import method_registry
 from viforge.methods.cpt import CPTMethod
 from viforge.methods.peft_lora import LoRAMethod, QLoRAMethod
-from viforge.methods.preference import DPOMethod, GRPOMethod
+from viforge.methods.preference import DPOMethod, GRPOMethod, KTOMethod
 from viforge.methods.sft import SFTMethod
 
 
 @pytest.mark.unit
-def test_all_six_methods_registered():
+def test_all_seven_methods_registered():
     methods = method_registry.list_all()
-    for required in ["lora", "qlora", "sft", "dpo", "grpo", "cpt"]:
+    for required in ["lora", "qlora", "sft", "dpo", "kto", "grpo", "cpt"]:
         assert required in methods
         inst = method_registry.get(required)
         assert inst.method_name == required
@@ -52,10 +52,12 @@ def test_mock_execution_paths(tmp_path: Path):
         QLoRAMethod(),
         SFTMethod(),
         DPOMethod(),
+        KTOMethod(),
         GRPOMethod(),
         CPTMethod(),
     ]
     for method in methods:
+
         metrics = method.execute_stage(
             model=None,
             tokenizer=None,

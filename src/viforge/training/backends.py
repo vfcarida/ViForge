@@ -22,18 +22,32 @@ class LigerKernelManager:
             return False
 
         try:
-            # In production with liger-kernel installed:
-            # from liger_kernel.transformers import apply_liger_kernel_to_llama
-            # apply_liger_kernel_to_llama()
+            import liger_kernel.transformers as liger_transformers
+
+            model_type = getattr(getattr(model, "config", None), "model_type", "llama")
+            patch_fn_name = f"apply_liger_kernel_to_{model_type}"
+            if hasattr(liger_transformers, patch_fn_name):
+                getattr(liger_transformers, patch_fn_name)()
+            elif hasattr(liger_transformers, "apply_liger_kernel_to_llama"):
+                liger_transformers.apply_liger_kernel_to_llama()
+            elif hasattr(liger_transformers, "_apply_liger_kernel"):
+                liger_transformers._apply_liger_kernel()
+
             logger.info(
-                "Liger-Kernel Triton fused kernels activated (RMSNorm, CrossEntropy, SwiGLU)."
+                "Liger-Kernel Triton fused kernels successfully activated (RMSNorm, CrossEntropy, SwiGLU)."
             )
             return True
-        except ImportError:
+        except (ImportError, ModuleNotFoundError):
             logger.warning(
                 "liger-kernel package not installed. Gracefully falling back to native PyTorch kernels."
             )
             return False
+        except Exception as e:
+            logger.warning(
+                f"Liger-Kernel patching encountered an issue ({e}). Continuing with native PyTorch kernels."
+            )
+            return False
+
 
 
 class BackendManager:

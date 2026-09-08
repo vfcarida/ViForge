@@ -79,8 +79,33 @@ def test_contamination_detector():
 def test_sequence_packer():
     packer = SequencePacker(max_seq_len=16, pad_token_id=0, eos_token_id=2)
     seqs = [[10, 11, 12], [20, 21, 22, 23], [30, 31]]
-    packed = packer.pack_tokenized_sequences(seqs, add_eos=True)
+    packed = packer.pack_tokenized_sequences(seqs, add_eos=True, build_block_diagonal_mask=True)
 
     assert packed["num_blocks"] >= 1
     assert len(packed["input_ids"][0]) == 16
     assert len(packed["attention_mask"][0]) == 16
+
+    # Verify document isolation metadata
+    assert "document_ids" in packed
+    assert "cu_seqlens" in packed
+    assert "block_diagonal_masks" in packed
+
+    doc_ids = packed["document_ids"][0]
+    cu = packed["cu_seqlens"][0]
+    diag_mask = packed["block_diagonal_masks"][0]
+
+    # Check that cu_seqlens starts with 0 and increases monotonically
+    assert cu[0] == 0
+    assert all(cu[i] < cu[i + 1] for i in range(len(cu) - 1))
+
+    # Check that tokens from doc 0 do not attend to tokens from doc 1
+    # seq 0 has 4 tokens (3 + 1 eos), seq 1 starts at index 4
+    assert doc_ids[0] == 0
+    assert doc_ids[4] == 1
+    # Token at index 0 (doc 0) should not attend to token at index 4 (doc 1)
+    assert diag_mask[0][4] is False
+    # Token at index 4 (doc 1) should not attend to token at index 0 (doc 0)
+    assert diag_mask[4][0] is False
+    # Token at index 4 should attend to itself (causal self-attention)
+    assert diag_mask[4][4] is True
+

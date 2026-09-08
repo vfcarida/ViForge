@@ -12,7 +12,10 @@ import yaml
 from viforge.config.schemas import DatasetConfig, DomainPresetConfig, DomainPresetDatasetItem
 from viforge.datasets.adapters import DatasetAdapter
 from viforge.datasets.filters import CodeQualityFilter, TextQualityFilter
+from viforge.preprocessing.contamination import ContaminationDetector
 from viforge.preprocessing.deduplication import MinHashDeduplicator
+from viforge.security.pii_filter import PIIFilter
+from viforge.security.secrets_scanner import SecretsScanner
 from viforge.utils.logging import logger
 
 
@@ -281,12 +284,94 @@ class DatasetPreparer:
 
         return formatted
 
+    def _scan_and_redact_secrets_and_pii(
+        self, records: List[Dict[str, Any]]
+    ) -> List[Dict[str, Any]]:
+        """Scan and redact credentials, API keys, tokens, and PII from records."""
+        if not getattr(self.config, "scan_secrets", True) and not getattr(
+            self.config, "scan_pii", True
+        ):
+            return records
+
+        sanitized_records = []
+        for r in records:
+            rec_copy = {}
+            for k, v in r.items():
+                if isinstance(v, str):
+                    s = v
+                    if getattr(self.config, "scan_secrets", True):
+                        s = SecretsScanner.redact(s)
+                    if getattr(self.config, "scan_pii", True):
+                        s = PIIFilter.redact(s)
+                    rec_copy[k] = s
+                elif isinstance(v, list) and k == "messages":
+                    sanitized_messages = []
+                    for m in v:
+                        if isinstance(m, dict):
+                            m_copy = dict(m)
+                            content = str(m.get("content", ""))
+                            if getattr(self.config, "scan_secrets", True):
+                                content = SecretsScanner.redact(content)
+                            if getattr(self.config, "scan_pii", True):
+                                content = PIIFilter.redact(content)
+                            m_copy["content"] = content
+                            sanitized_messages.append(m_copy)
+                        else:
+                            sanitized_messages.append(m)
+                    rec_copy[k] = sanitized_messages
+                else:
+                    rec_copy[k] = v
+            sanitized_records.append(rec_copy)
+        return sanitized_records
+
+    def _decontaminate(self, records: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        """Filter records contaminated by canonical evaluation benchmarks."""
+        if not getattr(self.config, "decontaminate", True) or not records:
+            return records
+
+        temp_records = []
+        for r in records:
+            rec_copy = dict(r)
+            if "text" not in rec_copy:
+                if "messages" in rec_copy and isinstance(rec_copy["messages"], list):
+                    rec_copy["_contam_text"] = " ".join(
+                        str(m.get("content", ""))
+                        for m in rec_copy["messages"]
+                        if isinstance(m, dict)
+                    )
+                elif "prompt" in rec_copy:
+                    rec_copy["_contam_text"] = (
+                        str(rec_copy.get("prompt", ""))
+                        + " "
+                        + str(rec_copy.get("chosen", "") or rec_copy.get("completion", ""))
+                    )
+                elif "instruction" in rec_copy:
+                    rec_copy["_contam_text"] = (
+                        str(rec_copy.get("instruction", ""))
+                        + " "
+                        + str(rec_copy.get("output", "") or rec_copy.get("response", ""))
+                    )
+                else:
+                    rec_copy["_contam_text"] = str(r)
+            else:
+                rec_copy["_contam_text"] = str(rec_copy["text"])
+            temp_records.append(rec_copy)
+
+        detector = ContaminationDetector()
+        detector.load_default_benchmark_banks()
+        clean_recs, stats = detector.filter_dataset(temp_records, text_key="_contam_text")
+        for c in clean_recs:
+            c.pop("_contam_text", None)
+        return clean_recs
+
     def prepare(self) -> List[Dict[str, Any]]:
-        """Execute complete preparation pipeline."""
+        """Execute complete preparation pipeline with data governance."""
         raw = self._load_source()
         filtered = self._apply_quality_filters(raw)
-        deduped = self._deduplicate(filtered)
-        formatted = self._format_for_technique(deduped)
+        sanitized = self._scan_and_redact_secrets_and_pii(filtered)
+        deduped = self._deduplicate(sanitized)
+        decontaminated = self._decontaminate(deduped)
+        formatted = self._format_for_technique(decontaminated)
         logger.info(
             f"Dataset preparation complete: {len(formatted)} records formatted for '{self.config.format}'."
         )

@@ -170,3 +170,59 @@ def test_evaluation_config_and_harness(tmp_path: Path):
     assert len(domain_res) == 2
     assert len(ret_res) == 2
     assert all(r.total_problems <= 2 for r in domain_res + ret_res)
+
+
+@pytest.mark.unit
+def test_swe_bench_patch_parser_and_evaluation(tmp_path: Path):
+    from viforge.evaluation.suites.swe_bench import parse_and_validate_unified_diff
+
+    # 1. Valid git unified diff
+    valid_patch = """diff --git a/app/views.py b/app/views.py
+--- a/app/views.py
++++ b/app/views.py
+@@ -10,3 +10,4 @@
+ def handle_request():
+-    return None
++    # Fixed regression
++    return {"status": "ok"}
+"""
+    res = parse_and_validate_unified_diff(valid_patch)
+    assert res["is_valid"] is True
+    assert res["has_file_headers"] is True
+    assert res["hunk_count"] == 1
+    assert res["modified_lines"] == 3
+
+    # 2. Markdown-wrapped patch
+    wrapped_patch = f"```diff\n{valid_patch}\n```"
+    res_wrapped = parse_and_validate_unified_diff(wrapped_patch)
+    assert res_wrapped["is_valid"] is True
+
+    # 3. Invalid: trivial python function without diff headers or hunks
+    trivial_code = "def handle_request():\n    return 'not a patch'\n"
+    res_invalid = parse_and_validate_unified_diff(trivial_code)
+    assert res_invalid["is_valid"] is False
+
+    # 4. Evaluate SWEBenchSuite with mock backend
+    swe_suite = SWEBenchSuite()
+    invalid_backend = MockInferenceBackend(fixed_completion="def solve(): return True")
+    result_invalid = swe_suite.evaluate(
+        invalid_backend,
+        output_dir=tmp_path / "swe_eval_invalid",
+        sampling_params=SamplingParams(),
+        limit=2,
+    )
+    assert result_invalid.passed_problems == 0
+    assert result_invalid.pass_at_k["resolved@1"] == 0.0
+    assert result_invalid.raw_metrics["strict_patch_validation"] is True
+
+    valid_backend = MockInferenceBackend(fixed_completion=valid_patch)
+    result_valid = swe_suite.evaluate(
+        valid_backend,
+        output_dir=tmp_path / "swe_eval_valid",
+        sampling_params=SamplingParams(),
+        limit=2,
+    )
+    assert result_valid.passed_problems == 2
+    assert result_valid.pass_at_k["resolved@1"] == 1.0
+    assert result_valid.raw_metrics["syntax_valid_patches"] == 2
+

@@ -105,4 +105,7 @@ follow_imports = "silent"
 check_untyped_defs = true
 disallow_untyped_defs = false
 warn_unused_ignores = false
-disable_error_code = ["assignment", "import-untyped", "override", "misc", "arg-type", "call-arg", "attr-defined", "list-item"]
+disable_error_code = ["import-untyped", "arg-type", "attr-defined", "assignment", "call-arg", "misc"]
+
+
+

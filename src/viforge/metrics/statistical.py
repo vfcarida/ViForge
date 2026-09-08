@@ -3,7 +3,7 @@ ViForge Statistical Significance and Confidence Interval Calculations.
 """
 
 import math
-from typing import Tuple
+from typing import Optional, Tuple
 
 
 def wilson_score_interval(
@@ -101,3 +101,58 @@ def compute_pass_at_k_distribution(
         metrics[f"pass@{k}"] = round(avg_k, 4)
 
     return metrics
+
+
+def mcnemar_test(b: int, c: int, exact: Optional[bool] = None) -> Tuple[float, float]:
+    """
+    Computes McNemar's test for paired nominal trial outcomes.
+    b: Number of discordant problems where baseline succeeded and specialist failed.
+    c: Number of discordant problems where baseline failed and specialist succeeded.
+
+    Returns:
+        (statistic, p_value)
+    """
+    total_discordant = b + c
+    if total_discordant == 0:
+        return (0.0, 1.0)
+
+    use_exact = exact if exact is not None else (total_discordant < 25)
+
+    if use_exact:
+        k = min(b, c)
+        p_val = sum(math.comb(total_discordant, i) * (0.5**total_discordant) for i in range(k + 1))
+        p_val = min(1.0, 2.0 * p_val)
+        stat = float((b - c) ** 2) / total_discordant
+        return (round(stat, 4), round(p_val, 6))
+    else:
+        num = (abs(b - c) - 1.0) ** 2
+        chi2 = max(0.0, num / total_discordant)
+        z = math.sqrt(chi2)
+        p_val = math.erfc(z / math.sqrt(2.0))
+        return (round(chi2, 4), round(min(1.0, max(0.0, p_val)), 6))
+
+
+def two_proportion_z_test(
+    success1: int, total1: int, success2: int, total2: int
+) -> Tuple[float, float]:
+    """
+    Two-tailed pooled two-proportion z-test for independent binomial samples.
+    """
+    if total1 <= 0 or total2 <= 0:
+        return (0.0, 1.0)
+
+    p1 = success1 / total1
+    p2 = success2 / total2
+    p_pool = (success1 + success2) / (total1 + total2)
+
+    if p_pool == 0.0 or p_pool == 1.0:
+        return (0.0, 1.0)
+
+    se = math.sqrt(p_pool * (1.0 - p_pool) * (1.0 / total1 + 1.0 / total2))
+    if se == 0.0:
+        return (0.0, 1.0)
+
+    z = abs(p2 - p1) / se
+    p_val = math.erfc(z / math.sqrt(2.0))
+    return (round(z, 4), round(min(1.0, max(0.0, p_val)), 6))
+
