@@ -67,6 +67,7 @@ class ExperimentRunner:
                 model_config=self.manifest.model,
                 hyperparams=stage.hyperparameters,
                 hardware=self.manifest.hardware,
+                method=stage.method,
             )
             cost_est = TrainingCostEstimator.estimate_cost(
                 model_config=self.manifest.model,

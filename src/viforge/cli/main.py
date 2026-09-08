@@ -58,7 +58,7 @@ def run_doctor():
             table.add_row(f"GPU [{dev['index']}]", f"{dev['name']} ({dev['vram_gb']} GB VRAM)")
         table.add_row("BF16 Supported", str(diag["bfloat16_supported"]))
 
-    for pkg in ["transformers", "peft", "trl", "bitsandbytes", "vllm", "boto3"]:
+    for pkg in ["transformers", "peft", "trl", "bitsandbytes", "vllm", "boto3", "vipym"]:
         ver = diag.get(f"{pkg}_version", "Not Installed")
         status_style = "green" if ver != "Not Installed" else "yellow"
         table.add_row(f"Package: {pkg}", f"[{status_style}]{ver}[/{status_style}]")
@@ -447,7 +447,301 @@ def cli_merge_adapters(
         device=device,
     )
     console.print(f"[bold green][OK] Merged model saved to:[/bold green] {out}")
+ 
+
+@app.command("export-vipym")
+def cli_export_vipym(
+    model_or_config: Path = typer.Argument(
+        ...,
+        help="Path to merged model directory or ViForge experiment YAML manifest",
+    ),
+    recipe: str = typer.Option(
+        "smoothquant_w8a8",
+        "--recipe",
+        "-r",
+        help="Compression recipe (smoothquant_w8a8, autoround_w4a16, awq_w4a16, gptq_w4a16, distill_logit, fp8_kv, spinquant)",
+    ),
+    output_path: Path = typer.Option(
+        Path("configs/vipym_export.yaml"),
+        "--output",
+        "-o",
+        help="Destination path for ViPym experiment YAML",
+    ),
+    merged_model_dir: Optional[Path] = typer.Option(
+        None,
+        "--merged-model-dir",
+        help="Path to merged model directory (if passing ViForge YAML manifest)",
+    ),
+    student_model: Optional[str] = typer.Option(
+        None,
+        "--student-model",
+        "-s",
+        help="Student model ID or path if using distillation recipe (e.g. Qwen/Qwen2.5-Coder-1.5B)",
+    ),
+    calibration_dataset: str = typer.Option(
+        "wikitext",
+        "--calibration-dataset",
+        help="Calibration dataset name for quantization",
+    ),
+    calibration_samples: int = typer.Option(
+        512,
+        "--calibration-samples",
+        help="Number of calibration samples",
+    ),
+):
+    """Export ViForge specialist model into a validated ViPym compression manifest."""
+    from viforge.integrations.vipym import ViPymExporter
+
+    console.print(Panel.fit("[bold cyan]ViForge -> ViPym Experiment Exporter[/bold cyan]"))
+    console.print(f"Target: [green]{model_or_config}[/green]")
+    console.print(f"Recipe: [magenta]{recipe}[/magenta]")
+
+    # Check if target is a file/manifest or directory
+    if model_or_config.is_file() or str(model_or_config).endswith((".yaml", ".yml")):
+        exported = ViPymExporter.export_from_manifest(
+            manifest_or_path=model_or_config,
+            recipe=recipe,
+            output_yaml_path=output_path,
+            merged_model_dir=merged_model_dir,
+            student_model_id=student_model,
+            calibration_dataset=calibration_dataset,
+            calibration_samples=calibration_samples,
+        )
+    else:
+        exported = ViPymExporter.export_from_model_dir(
+            model_dir=model_or_config,
+            recipe=recipe,
+            output_yaml_path=output_path,
+            student_model_id=student_model,
+            calibration_dataset=calibration_dataset,
+            calibration_samples=calibration_samples,
+        )
+
+    console.print(
+        f"[bold green][OK] ViPym experiment manifest exported successfully:[/bold green] {exported}"
+    )
+    console.print(f"[dim]Run directly with: viforge compress-vipym {exported} --mock[/dim]")
+
+
+@app.command("compress-vipym")
+def cli_compress_vipym(
+    model_or_config: Path = typer.Argument(
+        ...,
+        help="Path to ViPym YAML manifest, ViForge experiment YAML, or merged model directory",
+    ),
+    recipe: str = typer.Option(
+        "smoothquant_w8a8",
+        "--recipe",
+        "-r",
+        help="Compression recipe to use if passing ViForge manifest or model directory",
+    ),
+    work_dir: Path = typer.Option(
+        Path("runs/vipym"),
+        "--work-dir",
+        "-w",
+        help="Working directory for compressed artifacts and summaries",
+    ),
+    mock: bool = typer.Option(
+        True,
+        "--mock/--live",
+        help="Simulate execution with deterministic mock stats (True) or execute live ViPym engine (False)",
+    ),
+    student_model: Optional[str] = typer.Option(
+        None,
+        "--student-model",
+        "-s",
+        help="Student model ID if using distillation recipe",
+    ),
+):
+    """Execute ViPym compression pipeline on ViForge specialist model."""
+    import yaml
+    from viforge.integrations.vipym import ViPymExporter, ViPymRunner, is_vipym_available
+
+    console.print(Panel.fit("[bold cyan]ViForge x ViPym Compression Orchestrator[/bold cyan]"))
+
+    work_dir.mkdir(parents=True, exist_ok=True)
+
+    # Determine if input is already a ViPym config or needs export
+    config_to_run: Path
+    if model_or_config.is_file() and str(model_or_config).endswith((".yaml", ".yml")):
+        with open(model_or_config, "r", encoding="utf-8") as f:
+            data = yaml.safe_load(f) or {}
+        if "compression_pipeline" in data:
+            config_to_run = model_or_config
+        else:
+            # It's a ViForge manifest! Export it first
+            export_dst = work_dir / f"vipym_{recipe}_{model_or_config.stem}.yaml"
+            config_to_run = ViPymExporter.export_from_manifest(
+                manifest_or_path=model_or_config,
+                recipe=recipe,
+                output_yaml_path=export_dst,
+                student_model_id=student_model,
+            )
+    else:
+        # Directory model
+        export_dst = work_dir / f"vipym_{recipe}_{model_or_config.name}.yaml"
+        config_to_run = ViPymExporter.export_from_model_dir(
+            model_dir=model_or_config,
+            recipe=recipe,
+            output_yaml_path=export_dst,
+            student_model_id=student_model,
+        )
+
+    console.print(f"ViPym Config: [green]{config_to_run}[/green]")
+    console.print(
+        f"Mode: [bold magenta]{'MOCK SIMULATION' if mock else 'LIVE VIPYM EXECUTION'}[/bold magenta]"
+    )
+    console.print(
+        f"ViPym Installed: {'[green]Yes[/green]' if is_vipym_available() else '[yellow]No[/yellow]'}"
+    )
+
+    result = ViPymRunner.run_compression(
+        vipym_config_path=config_to_run,
+        work_dir=work_dir,
+        mock=mock,
+    )
+
+    if result.get("status") == "Completed":
+        console.print("\n[bold green]=== ViPym Compression Completed Successfully ===[/bold green]")
+        table = Table(title="ViPym Compression Results")
+        table.add_column("Metric / Property", style="cyan")
+        table.add_column("Value", style="green")
+        table.add_row("Experiment ID", str(result.get("experiment_id")))
+        table.add_row("Method", str(result.get("method")))
+        table.add_row("Scheme", str(result.get("scheme")))
+        if result.get("is_mock"):
+            table.add_row("Size Reduction", f"{result.get('size_reduction_pct', 0):.1f}%")
+            table.add_row("Latency Speedup", f"{result.get('latency_speedup', 1.0):.2f}x")
+            table.add_row("VRAM Saved", f"{result.get('vram_saved_gb', 0):.1f} GB")
+        table.add_row("Output Directory", str(result.get("output_dir")))
+        table.add_row("Execution Time", f"{result.get('execution_time_seconds', 0)}s")
+        console.print(table)
+    else:
+        console.print(f"[bold red]ViPym Compression Failed:[/bold red] {result}")
+
+
+@app.command("pareto-unified")
+def cli_pareto_unified(
+    config_path: Path = typer.Argument(..., help="Path to experiment YAML manifest"),
+    domain_gain: float = typer.Option(
+        36.0, "--domain-gain", "-g", help="Relative domain benchmark gain (%)"
+    ),
+    retention_delta: float = typer.Option(
+        0.0, "--retention-delta", "-r", help="Relative general retention delta (%)"
+    ),
+    total_cost: float = typer.Option(
+        24.50, "--cost", "-c", help="Total training compute cost in USD"
+    ),
+    output_dir: Path = typer.Option(
+        Path("reports/pareto"),
+        "--output-dir",
+        "-o",
+        help="Directory to save JSON and HTML reports",
+    ),
+):
+    """Compute 5D Unified Pareto Frontier (Base -> Specialist -> Compressed) and discover deployment sweet spots."""
+    from viforge.analysis.unified_pareto import UnifiedParetoEngine
+    from viforge.config.loader import ConfigLoader
+
+    console.print(Panel.fit("[bold cyan]ViForge Unified Pareto Frontier Engine[/bold cyan]"))
+    manifest = ConfigLoader.load_manifest(config_path)
+
+    base_domain = 0.50
+    spec_domain = base_domain * (1.0 + domain_gain / 100.0)
+    base_retention = 0.65
+    spec_retention = base_retention * (1.0 + retention_delta / 100.0)
+
+    points = UnifiedParetoEngine.build_unified_points(
+        model_name=manifest.model.name,
+        base_domain_score=base_domain,
+        base_retention_score=base_retention,
+        specialized_domain_score=spec_domain,
+        specialized_retention_score=spec_retention,
+        training_cost_usd=total_cost,
+    )
+
+    table = Table(title=f"Unified Pareto Frontier: {manifest.model.name}")
+    table.add_column("Candidate Variant", style="cyan")
+    table.add_column("Domain Score", style="blue")
+    table.add_column("Gain (%)", style="green")
+    table.add_column("Retention", style="white")
+    table.add_column("VRAM (GB)", style="yellow")
+    table.add_column("Latency (ms)", style="magenta")
+    table.add_column("Cost (USD)", style="white")
+    table.add_column("Pareto Optimal", style="bold")
+
+    for p in points:
+        opt_str = "[bold green]YES[/bold green]" if p.is_pareto_optimal else "[dim]NO[/dim]"
+        table.add_row(
+            p.variant_label,
+            f"{p.domain_score:.3f}",
+            f"{p.domain_gain_pct:+.1f}%",
+            f"{p.general_retention_score:.3f}",
+            f"{p.serving_memory_gb:.1f} GB",
+            f"{p.serving_latency_ms:.0f} ms",
+            f"${p.total_cost_usd:.2f}",
+            opt_str,
+        )
+    console.print(table)
+
+    sweet_spots = UnifiedParetoEngine.find_sweet_spots(points)
+    console.print("\n[bold green]=== Deployment Sweet-Spot Recommendations ===[/bold green]")
+    for spot in sweet_spots:
+        console.print(
+            f"  • [bold cyan]{spot.category}:[/bold cyan] [bold]{spot.point.variant_label}[/bold]\n"
+            f"    [dim]{spot.rationale}[/dim]"
+        )
+
+    json_path = UnifiedParetoEngine.export_json(points, output_dir / "unified_pareto.json")
+    html_path = UnifiedParetoEngine.generate_html_chart(
+        points, output_dir / "unified_pareto.html"
+    )
+    console.print(f"\n[green][OK] JSON Report saved to:[/green] {json_path}")
+    console.print(f"[green][OK] Interactive HTML Chart saved to:[/green] {html_path}")
+
+
+@app.command("ui")
+def cli_ui(
+    port: int = typer.Option(8501, "--port", "-p", help="Port for Streamlit dashboard"),
+    host: str = typer.Option("localhost", "--host", "-h", help="Host address for Streamlit dashboard"),
+    browser: bool = typer.Option(True, "--browser/--no-browser", help="Automatically launch browser"),
+):
+    """Launch the ViForge Interactive Studio (Streamlit Dashboard)."""
+    import shutil
+    import subprocess
+    from viforge.ui import DASHBOARD_APP_PATH
+
+    console.print(Panel.fit("[bold cyan]ViForge Interactive Studio Launcher[/bold cyan]"))
+
+    streamlit_bin = shutil.which("streamlit")
+    if not streamlit_bin:
+        console.print(
+            "[bold red]Streamlit is not installed.[/bold red]\n"
+            "Install it via: [green]pip install \"viforge[ui]\"[/green] or [green]pip install streamlit plotly[/green]"
+        )
+        raise typer.Exit(code=1)
+
+    cmd = [
+        streamlit_bin,
+        "run",
+        str(DASHBOARD_APP_PATH),
+        "--server.port",
+        str(port),
+        "--server.address",
+        str(host),
+    ]
+    if not browser:
+        cmd.append("--server.headless=true")
+
+    console.print(f"Launching dashboard at: [bold green]http://{host}:{port}[/bold green]")
+    console.print("[dim]Press Ctrl+C to stop the dashboard server.[/dim]")
+    try:
+        subprocess.run(cmd)
+    except KeyboardInterrupt:
+        console.print("\n[bold yellow]ViForge Studio stopped.[/bold yellow]")
 
 
 if __name__ == "__main__":
     app()
+
+

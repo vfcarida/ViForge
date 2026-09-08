@@ -3,7 +3,7 @@ ViForge Pre-flight Resource and Memory Profiler.
 Validates GPU VRAM, CPU RAM, disk space, and sequence length feasibility before allocation.
 """
 
-from typing import Dict, Tuple
+from typing import Any, Dict, Optional, Tuple
 from viforge.config.schemas import (
     ModelConfig,
     HyperparametersConfig,
@@ -51,6 +51,7 @@ class ResourceProfiler:
         model_config: ModelConfig,
         hyperparams: HyperparametersConfig,
         hardware: HardwareConfig,
+        method: Optional[Any] = None,
     ) -> Dict[str, float]:
         total_params, trainable_params, _ = cls.estimate_trainable_parameters(
             model_config, hyperparams
@@ -69,6 +70,14 @@ class ResourceProfiler:
         frozen_params = total_params - trainable_params
         weight_mem_bytes = (frozen_params * bytes_per_base_param) + (trainable_params * 2.0)
         weight_mem_gb = weight_mem_bytes / (1024**3)
+
+        # Reference model overhead (Standard DPO requires frozen reference policy in memory;
+        # Reference-free methods like ORPO, SimPO, KTO, and SFT require 0.0 GB reference overhead)
+        method_str = str(method.value if hasattr(method, "value") else (method or "")).lower()
+        if method_str == "dpo":
+            ref_model_gb = weight_mem_gb
+        else:
+            ref_model_gb = 0.0
 
         # 2. Gradients (2 bytes per trainable param in half precision)
         grad_mem_gb = (trainable_params * 2.0) / (1024**3)
@@ -94,10 +103,13 @@ class ResourceProfiler:
 
         act_mem_gb = max(0.5, act_mem_bytes / (1024**3))
         overhead_gb = 1.5
-        total_vram_gb = weight_mem_gb + grad_mem_gb + opt_mem_gb + act_mem_gb + overhead_gb
+        total_vram_gb = (
+            weight_mem_gb + ref_model_gb + grad_mem_gb + opt_mem_gb + act_mem_gb + overhead_gb
+        )
 
         return {
             "weight_memory_gb": round(weight_mem_gb, 2),
+            "ref_model_memory_gb": round(ref_model_gb, 2),
             "gradient_memory_gb": round(grad_mem_gb, 2),
             "optimizer_memory_gb": round(opt_mem_gb, 2),
             "activation_memory_gb": round(act_mem_gb, 2),
@@ -113,8 +125,9 @@ class ResourceProfiler:
         model_config: ModelConfig,
         hyperparams: HyperparametersConfig,
         hardware: HardwareConfig,
+        method: Optional[Any] = None,
     ) -> Dict[str, float]:
-        profile = cls.profile_vram_gb(model_config, hyperparams, hardware)
+        profile = cls.profile_vram_gb(model_config, hyperparams, hardware, method=method)
         total_est = profile["total_estimated_vram_gb"]
         max_allowed = hardware.vram_per_gpu_gb * cls.SAFETY_MARGIN
 

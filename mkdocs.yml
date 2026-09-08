@@ -46,8 +46,12 @@ nav:
   - Home: index.md
   - Architecture:
       - System Overview: architecture/README.md
+      - Unified Pareto & Studio: architecture/unified_pareto.md
+      - Reference-Free Alignment (ORPO & SimPO): research/reference_free_alignment.md
   - Case Studies:
       - DeepSeek V4 Pro SWE: case-studies/deepseek-v4-pro-swe.md
+  - Integrations:
+      - ViPym Compression: integrations/vipym.md
   - Quality & Testing:
       - Testing Guide: testing/README.md
   - Audit & Plan:

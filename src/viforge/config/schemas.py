@@ -23,6 +23,8 @@ class TrainingMethodType(str, Enum):
     KTO = "kto"
     GRPO = "grpo"
     SYNTHETIC_SFT = "synthetic_sft"
+    ORPO = "orpo"
+    SIMPO = "simpo"
 
 
 class QuantizationType(str, Enum):
@@ -109,7 +111,7 @@ class DatasetConfig(BaseModel):
     source: str = Field(
         ..., description="HuggingFace dataset ID or local path (e.g. JSON, JSONL, Parquet)"
     )
-    format: Literal["sft", "dpo", "grpo", "cpt"] = Field(
+    format: Literal["sft", "dpo", "grpo", "cpt", "kto", "orpo", "simpo"] = Field(
         ..., description="Target training technique format"
     )
     split: str = Field("train", description="Dataset split (train/validation/test)")
@@ -192,8 +194,10 @@ class HyperparametersConfig(BaseModel):
     lora_dropout: float = Field(0.05, ge=0.0, le=1.0)
     target_modules: Optional[List[str]] = Field(None)
 
-    # Preference Optimization (DPO/GRPO/KTO)
-    beta: Optional[float] = Field(0.1, description="DPO temperature beta")
+    # Preference Optimization (DPO/GRPO/KTO/ORPO/SimPO)
+    beta: Optional[float] = Field(0.1, description="Preference temperature beta")
+    orpo_alpha: Optional[float] = Field(0.1, ge=0.0, description="Odds ratio loss weight lambda in ORPO")
+    simpo_gamma: Optional[float] = Field(0.5, ge=0.0, description="Target reward margin gamma in SimPO")
     max_prompt_len: Optional[int] = Field(2048)
     max_completion_len: Optional[int] = Field(2048)
     num_generations: Optional[int] = Field(4, description="GRPO candidate rollouts per prompt")

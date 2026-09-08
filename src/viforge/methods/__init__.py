@@ -6,7 +6,8 @@ from viforge.methods.base import BaseTrainingMethod, MethodRegistry, method_regi
 from viforge.methods.sft import SFTMethod
 from viforge.methods.peft_lora import LoRAMethod, QLoRAMethod
 from viforge.methods.cpt import CPTMethod
-from viforge.methods.preference import DPOMethod, GRPOMethod
+from viforge.methods.preference import DPOMethod, GRPOMethod, KTOMethod
+from viforge.methods.reference_free import ORPOMethod, SimPOMethod
 from viforge.methods.synthetic import SyntheticDataPipeline, SyntheticSFTMethod
 
 __all__ = [
@@ -19,6 +20,9 @@ __all__ = [
     "CPTMethod",
     "DPOMethod",
     "GRPOMethod",
+    "KTOMethod",
+    "ORPOMethod",
+    "SimPOMethod",
     "SyntheticDataPipeline",
     "SyntheticSFTMethod",
 ]
