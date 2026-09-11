@@ -94,7 +94,7 @@ All training data is ingested, quality-filtered, decontaminated, and formatted v
 
 ## 3. Master Experiment Manifest
 
-The complete declarative configuration is located at [`configs/experiments/deepseek_v4_pro_software_engineering.yaml`](../../configs/experiments/deepseek_v4_pro_software_engineering.yaml).
+The complete declarative configuration is located at `configs/experiments/deepseek_v4_pro_software_engineering.yaml`.
 
 ### Directed Acyclic Graph (DAG) Topology
 
@@ -310,7 +310,8 @@ To replicate full empirical results on live hardware without mock inference:
 
 | Path | Description |
 |---|---|
-| [`configs/experiments/deepseek_v4_pro_software_engineering.yaml`](../../configs/experiments/deepseek_v4_pro_software_engineering.yaml) | Master 5-stage experiment manifest |
-| [`configs/experiments/exp_002_deepseek_v4_pro_qlora_sft.yaml`](../../configs/experiments/exp_002_deepseek_v4_pro_qlora_sft.yaml) | Single-GPU QLoRA entry point config |
-| [`runs/deepseek_v4_pro_software_engineering_master/reports/`](../../runs/deepseek_v4_pro_software_engineering_master/reports/) | Automated Markdown, HTML, and JSON reports |
-| [`runs/deepseek_v4_pro_software_engineering_master/metrics/`](../../runs/deepseek_v4_pro_software_engineering_master/metrics/) | Per-stage training metrics and telemetry JSONs |
+| `configs/experiments/deepseek_v4_pro_software_engineering.yaml` | Master 5-stage experiment manifest |
+| `configs/experiments/exp_002_deepseek_v4_pro_qlora_sft.yaml` | Single-GPU QLoRA entry point config |
+| `runs/deepseek_v4_pro_software_engineering_master/reports/` | Automated Markdown, HTML, and JSON reports |
+| `runs/deepseek_v4_pro_software_engineering_master/metrics/` | Per-stage training metrics and telemetry JSONs |
+

@@ -9,7 +9,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![CI Status](https://img.shields.io/badge/CI-Passing-brightgreen.svg)]()
 [![Code Style: Ruff](https://img.shields.io/badge/code%20style-ruff-000000.svg)](https://github.com/astral-sh/ruff)
-[![Tests: 105/105 Passed](https://img.shields.io/badge/tests-105%2F105%20passed-success.svg)]()
+[![Tests: 153/153 Passed](https://img.shields.io/badge/tests-153%2F153%20passed-success.svg)]()
 [![Deployment: GGUF / Ollama / vLLM](https://img.shields.io/badge/deployment-GGUF%20%7C%20Ollama%20%7C%20vLLM-purple.svg)]()
 
 <p align="center">
@@ -68,6 +68,26 @@ Rather than assuming fine-tuning is always optimal, ViForge rigorously tests:
     <td width="50%">
       <h3>📦 One-Click GGUF, Ollama & AWQ Export</h3>
       Instant <code>merge_and_unload</code> of adapters, export to <b>GGUF</b> (<code>Q4_K_M</code>, <code>Q5_K_M</code>, <code>Q8_0</code>), auto-generation of Ollama <code>Modelfile</code>, and 4-bit <b>AWQ</b> quantization.
+    </td>
+  </tr>
+  <tr>
+    <td width="50%">
+      <h3>🤖 Evol-Instruct & Self-Play Preference Curation</h3>
+      Automated prompt mutations across 4 dimensions (deepen constraints, broaden domain, add reasoning steps, concretize), AST code verification, and length-bias mitigation for reference-free alignment (ORPO & SimPO).
+    </td>
+    <td width="50%">
+      <h3>🌐 Distributed Memory Profiler & Auto-Config</h3>
+      Analytical tensor memory modeling for <b>ZeRO-1/2/3</b>, <b>FSDP2</b>, and CPU offloading without pre-allocating GPUs. Auto-generates production YAML/JSON for Hugging Face <b>Accelerate</b> and <b>DeepSpeed</b>.
+    </td>
+  </tr>
+  <tr>
+    <td width="50%">
+      <h3>🚀 Enterprise Cluster & Cloud Orchestration</h3>
+      Production batch script generation for <b>Slurm HPC</b> (multi-node <code>torchrun</code>, Apptainer/Singularity containers) and Kubernetes <b>KubeRay</b> (<code>RayJob</code> CRDs), plus AWS SageMaker runners.
+    </td>
+    <td width="50%">
+      <h3>🏷️ Hugging Face Model Card & Lineage Generator</h3>
+      Automated Hub-ready <code>README.md</code> model cards with complete training hyperparameters, Wilson 95% CI statistical deltas, Pareto non-dominated badges, ViPym compression recommendations, and cryptographic SHA-256 lineage.
     </td>
   </tr>
 </table>
@@ -196,7 +216,7 @@ viforge run configs/experiments/deepseek_v4_pro_software_engineering.yaml --live
 
 ## 💻 CLI Command Suite
 
-ViForge provides 15 unified CLI subcommands for every stage of the post-training lifecycle:
+ViForge provides 22 unified CLI subcommands for every stage of the post-training lifecycle:
 
 | Command | Description |
 | :--- | :--- |
@@ -215,6 +235,32 @@ ViForge provides 15 unified CLI subcommands for every stage of the post-training
 | `viforge list-methods` | List all registered specialization methods (SFT, LoRA, QLoRA, CPT, DPO, GRPO). |
 | `viforge list-datasets` | List registered datasets and inspect SHA-256 governance manifests. |
 | `viforge list-evaluators` | List registered domain benchmarks and general capability retention suites. |
+| `viforge ui` | Launch the interactive ViForge Streamlit Studio web application. |
+| `viforge generate-synthetic` | Generate and filter Evol-Instruct synthetic data and Self-Play preference pairs. |
+| `viforge distributed-profile` | Analytical VRAM footprint profiler across DDP, ZeRO-1/2/3, FSDP2, and CPU Offload. |
+| `viforge export-distributed-config` | Generate Hugging Face Accelerate YAML and DeepSpeed JSON configurations. |
+| `viforge slurm-job` | Generate HPC Slurm batch submission scripts (`.sbatch`) with multi-GPU `torchrun`. |
+| `viforge ray-job` | Generate Kubernetes KubeRay `RayJob` Custom Resource Definition (CRD) manifests. |
+| `viforge generate-model-card` | Generate Hugging Face Hub `README.md` model cards with lineage, CIs, and badges. |
+
+---
+
+## 🎨 Interactive Streamlit Studio (`viforge ui`)
+
+Launch the unified graphical interface with a single command:
+
+```bash
+viforge ui --port 8501
+```
+
+The Studio features 7 specialized workflow tabs:
+1. **📊 Pareto Frontier & Leaderboard**: 3D and 2D interactive scatter plots of Capability-per-Dollar, Quality vs Latency, and Non-Dominated frontier tiers.
+2. **📈 Statistical Rigor & Wilson CIs**: Visual pass rate intervals, benchmark delta distributions, and significance hypothesis testing.
+3. **💰 AWS Cost & Amortization Calculator**: Cloud GPU pricing estimations (H100, A100, L40S) and token serving cost projections.
+4. **🔬 Experiment Inspector & DAG Visualizer**: Real-time inspection of multi-stage execution DAGs, training metrics, and logs.
+5. **📦 Model Export & Artifact Hub**: Adapter merging, GGUF export triggers, Ollama Modelfile generation, and AWQ quantization.
+6. **🤖 Synthetic & Self-Play Studio**: Interactive Evol-Instruct mutation tester, AST verification inspector, length-bias scoring calculator, and preference pair curator.
+7. **🌐 Distributed & Slurm Advisor**: Interactive cluster GPU topology planner, ZeRO/FSDP memory calculator, and one-click Slurm `.sbatch` & KubeRay `.yaml` generator.
 
 ---
 
@@ -286,13 +332,15 @@ ViForge/
 │       ├── artifacts/           # Adapter merger, GGUF exporter, Ollama Modelfile, AWQ quantizer
 │       ├── experiments/         # Stage DAG dependency resolver & Experiment campaign runner
 │       ├── analysis/            # Multi-objective non-dominated Pareto frontier engine
-│       ├── reporting/           # Markdown, HTML, JSON report generators
+│       ├── reporting/           # Markdown, HTML, JSON report generators, HF Model Card
+│       ├── orchestration/       # HPC Slurm (.sbatch) & Kubernetes KubeRay (RayJob) generators
+│       ├── ui/                  # Streamlit Studio 7-tab interactive web interface
 │       ├── aws/                 # S3 multipart sync, SageMaker runners, Resource cleanup
 │       ├── security/            # TruffleHog secrets scanner, PII filter, Subprocess sandbox
 │       └── utils/               # Rich logging, System diagnostics doctor, SHA-256 hashing
 ├── configs/                     # YAML configuration manifests for models, datasets, methods, and runs
 ├── docs/                        # Complete architecture, research, audit, ADRs, and testing guides
-├── tests/                       # Unit, contract, integration, smoke, and e2e test suites (105 tests)
+├── tests/                       # Unit, contract, integration, smoke, and e2e test suites (153 tests)
 ├── docker/                      # Multi-stage Dockerfile, CPU, and GPU CUDA 12.2 container images
 ├── examples/                    # Python API quickstart and custom benchmark plugin authoring
 ├── requirements/                # Cryptographically pinned lockfiles (base.lock, dev.lock, all.lock)
@@ -307,11 +355,9 @@ ViForge/
 ViForge is built with rigorous test-driven engineering. All tests run offline with deterministic fakes and zero external API dependencies:
 
 ```bash
-# Run full test suite (105/105 passing)
-pytest tests/ -v
-
-# Run with test coverage report
-pytest tests/ --cov=src/viforge --cov-report=term-missing
+# Run full test suite (153/153 passing)
+python -m pytest tests/unit/ -v
+python -m pytest tests/contract/ tests/smoke/ tests/integration/ tests/e2e/ -v
 
 # Run static linting and type checks
 ruff check src/ tests/

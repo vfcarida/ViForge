@@ -741,6 +741,228 @@ def cli_ui(
         console.print("\n[bold yellow]ViForge Studio stopped.[/bold yellow]")
 
 
+@app.command("generate-synthetic")
+def cli_generate_synthetic(
+    domain: str = typer.Option("software_engineering", "--domain", "-d", help="Domain preset or name"),
+    samples: int = typer.Option(5, "--samples", "-n", help="Number of synthetic samples to synthesize"),
+    strategy: str = typer.Option("deepen_constraints", "--strategy", "-s", help="Evol-Instruct strategy"),
+    output_path: Path = typer.Option(Path("data/synthetic_curated.jsonl"), "--output", "-o", help="Destination JSONL path"),
+    teacher_model: str = typer.Option("claude-3-5-sonnet-20241022", "--teacher-model", "-t", help="Teacher model identifier"),
+):
+    """Generate and curate high-complexity synthetic training data using Evol-Instruct & Self-Play."""
+    from viforge.methods.synthetic import EvolStrategy, SyntheticDataPipeline
+
+    console.print(Panel.fit("[bold cyan]ViForge Synthetic Data & Evol-Instruct Engine[/bold cyan]"))
+    pipeline = SyntheticDataPipeline(teacher_model_id=teacher_model)
+
+    seed_prompts = [
+        "Write a function to optimize a multi-threaded LRU cache.",
+        "Implement an async websocket event dispatcher with automatic exponential backoff.",
+        "Write a custom PyTorch autograd function for sparse attention.",
+        "Create a distributed rate limiter using token bucket algorithm with Redis.",
+        "Implement an AST transformer that redacts sensitive environment variable accesses.",
+    ]
+
+    generated_records = []
+    for i in range(samples):
+        base_p = seed_prompts[i % len(seed_prompts)]
+        evolved_p = pipeline.mutate_prompt(base_p, strategy=strategy)
+        candidate = {
+            "instruction": evolved_p,
+            "response": (
+                f"```python\n# Implementation for: {base_p}\n"
+                "class Solution:\n"
+                "    def execute(self, payload: dict) -> dict:\n"
+                "        # Strict production execution logic\n"
+                "        if not payload:\n"
+                "            raise ValueError('Empty payload')\n"
+                "        return {'status': 'processed', 'data': payload}\n```"
+            ),
+        }
+        generated_records.append(candidate)
+
+    accepted, stats = pipeline.process_and_filter_candidates(
+        raw_candidates=generated_records,
+        system_prompt=f"Domain: {domain} | Strategy: {strategy}",
+    )
+
+    saved_file, manifest = pipeline.export_to_dataset(
+        examples=accepted,
+        output_path=output_path,
+        dataset_id=f"synthetic-{domain}-{strategy}",
+        teacher_model=teacher_model,
+    )
+
+    table = Table(title="Synthetic Dataset Generation Summary")
+    table.add_column("Property", style="cyan")
+    table.add_column("Value", style="green")
+    table.add_row("Teacher Model", teacher_model)
+    table.add_row("Strategy", strategy)
+    table.add_row("Samples Generated", str(stats["total_candidates"]))
+    table.add_row("Accepted Samples", str(stats["accepted_samples"]))
+    table.add_row("Acceptance Rate", f"{stats['acceptance_rate_pct']}%")
+    table.add_row("Dataset File", str(saved_file))
+    table.add_row("SHA-256 Hash", manifest.content_sha256[:16] + "...")
+    console.print(table)
+
+
+@app.command("distributed-profile")
+def cli_distributed_profile(
+    config_path: Path = typer.Argument(..., help="Path to experiment YAML manifest"),
+    gpus: int = typer.Option(4, "--gpus", "-g", help="Target number of cluster GPUs"),
+    strategy: str = typer.Option("zero3", "--strategy", "-s", help="Distributed strategy (ddp, zero1, zero2, zero3, fsdp2)"),
+    cpu_offload: bool = typer.Option(False, "--cpu-offload", help="Enable parameter/optimizer CPU offload"),
+):
+    """Profile multi-GPU distributed VRAM partitioning and recommend optimal training topology."""
+    from viforge.config.loader import ConfigLoader
+    from viforge.config.schemas import HardwareConfig
+    from viforge.training.profiler import ResourceProfiler
+
+    manifest = ConfigLoader.load_manifest(config_path)
+    hw = HardwareConfig(
+        accelerator=manifest.hardware.accelerator,
+        num_gpus=gpus,
+        vram_per_gpu_gb=manifest.hardware.vram_per_gpu_gb,
+        compute_dtype=manifest.hardware.compute_dtype,
+    )
+    hp = manifest.pipeline[0].hyperparameters if manifest.pipeline else None
+
+    rec = ResourceProfiler.recommend_distributed_strategy(manifest.model, hp, hw)
+
+    console.print(Panel.fit(f"[bold cyan]Distributed Memory Profile: {manifest.model.name} ({gpus}x {hw.vram_per_gpu_gb:.0f}GB)[/bold cyan]"))
+
+    table = Table(title="Multi-GPU Strategy Comparison")
+    table.add_column("Strategy", style="cyan")
+    table.add_column("Weights / GPU", style="blue")
+    table.add_column("Gradients / GPU", style="white")
+    table.add_column("Optimizer / GPU", style="magenta")
+    table.add_column("Total VRAM / GPU", style="yellow")
+    table.add_column("Utilization", style="green")
+    table.add_column("Fits in VRAM", style="bold")
+
+    for s_name, p in rec["all_profiles"].items():
+        fits_str = "[green]YES[/green]" if p["fits_in_vram"] else "[red]NO (OOM)[/red]"
+        table.add_row(
+            s_name.upper(),
+            f"{p['weight_memory_per_gpu_gb']:.2f} GB",
+            f"{p['gradient_memory_per_gpu_gb']:.2f} GB",
+            f"{p['optimizer_memory_per_gpu_gb']:.2f} GB",
+            f"{p['total_estimated_vram_per_gpu_gb']:.2f} GB",
+            f"{p['utilization_pct']:.1f}%",
+            fits_str,
+        )
+    console.print(table)
+
+    console.print(f"\n[bold green]Recommended Strategy:[/bold green] [bold cyan]{rec['recommended_strategy'].upper()}[/bold cyan]")
+    console.print(f"[dim]{rec['rationale']}[/dim]\n")
+
+
+@app.command("export-distributed-config")
+def cli_export_distributed_config(
+    strategy: str = typer.Option("fsdp2", "--strategy", "-s", help="Distributed strategy (fsdp2, ddp, zero3)"),
+    framework: str = typer.Option("accelerate", "--framework", "-f", help="Framework ('accelerate' or 'deepspeed')"),
+    output_path: Path = typer.Option(Path("configs/distributed_config.yaml"), "--output", "-o", help="Target output file"),
+    gpus: int = typer.Option(4, "--gpus", "-g", help="Target number of cluster GPUs"),
+    vram: float = typer.Option(80.0, "--vram", help="VRAM per GPU in GB"),
+):
+    """Export standard HuggingFace Accelerate or DeepSpeed distributed training configurations."""
+    from viforge.config.schemas import HardwareConfig, HyperparametersConfig
+    from viforge.training.distributed import DistributedConfigGenerator
+
+    hw = HardwareConfig(num_gpus=gpus, vram_per_gpu_gb=vram)
+    hp = HyperparametersConfig()
+
+    if framework.lower() == "deepspeed":
+        z_stage = 3 if "3" in strategy else 2 if "2" in strategy else 1
+        DistributedConfigGenerator.generate_deepspeed_config(
+            hardware=hw,
+            hyperparams=hp,
+            zero_stage=z_stage,
+            output_path=output_path,
+        )
+    else:
+        DistributedConfigGenerator.generate_accelerate_config(
+            hardware=hw,
+            strategy=strategy,
+            output_path=output_path,
+        )
+
+    console.print(f"[bold green][OK] Distributed configuration exported to:[/bold green] {output_path}")
+
+
+@app.command("slurm-job")
+def cli_slurm_job(
+    config_path: Path = typer.Argument(..., help="Path to experiment YAML manifest"),
+    output_path: Path = typer.Option(Path("scripts/train_cluster.sbatch"), "--output", "-o", help="Path for generated .sbatch script"),
+    nodes: int = typer.Option(1, "--nodes", "-n", help="Number of compute nodes"),
+    gpus_per_node: int = typer.Option(4, "--gpus", "-g", help="GPUs per compute node"),
+    partition: str = typer.Option("gpu", "--partition", "-p", help="Slurm partition name"),
+    time_limit: str = typer.Option("24:00:00", "--time", "-t", help="Slurm execution time limit"),
+    container: Optional[str] = typer.Option(None, "--container", help="Path to Apptainer/Singularity container image"),
+):
+    """Generate production-ready Slurm HPC batch submission script."""
+    from viforge.config.loader import ConfigLoader
+    from viforge.orchestration.slurm import SlurmJobGenerator
+
+    manifest = ConfigLoader.load_manifest(config_path)
+    env_type = "container" if container else "venv"
+
+    saved = SlurmJobGenerator.export_sbatch(
+        manifest=manifest,
+        output_path=output_path,
+        config_path=config_path,
+        nodes=nodes,
+        gpus_per_node=gpus_per_node,
+        partition=partition,
+        time_limit=time_limit,
+        env_type=env_type,
+        container_image=container,
+    )
+    console.print(f"[bold green][OK] Slurm sbatch script generated:[/bold green] {saved}")
+    console.print(f"[dim]Submit on cluster via: sbatch {saved}[/dim]")
+
+
+@app.command("ray-job")
+def cli_ray_job(
+    config_path: Path = typer.Argument(..., help="Path to experiment YAML manifest"),
+    output_path: Path = typer.Option(Path("configs/rayjob.yaml"), "--output", "-o", help="Path for KubeRay YAML manifest"),
+    workers: int = typer.Option(1, "--workers", "-w", help="Number of Ray worker replicas"),
+    gpus_per_worker: int = typer.Option(4, "--gpus", "-g", help="GPUs per Ray worker"),
+):
+    """Generate Kubernetes KubeRay RayJob manifest."""
+    from viforge.config.loader import ConfigLoader
+    from viforge.orchestration.ray import RayJobGenerator
+
+    manifest = ConfigLoader.load_manifest(config_path)
+    saved = RayJobGenerator.export_rayjob_yaml(
+        manifest=manifest,
+        output_path=output_path,
+        config_path=str(config_path),
+        num_workers=workers,
+        gpus_per_worker=gpus_per_worker,
+    )
+    console.print(f"[bold green][OK] KubeRay RayJob manifest generated:[/bold green] {saved}")
+    console.print(f"[dim]Apply on Kubernetes via: kubectl apply -f {saved}[/dim]")
+
+
+@app.command("generate-model-card")
+def cli_generate_model_card(
+    config_path: Path = typer.Argument(..., help="Path to experiment YAML manifest"),
+    output_path: Path = typer.Option(Path("README.md"), "--output", "-o", help="Path for output model card"),
+):
+    """Generate Hugging Face Model Card (README.md) with metadata, tables, and Pareto recommendations."""
+    from viforge.config.loader import ConfigLoader
+    from viforge.reporting.model_card import ModelCardGenerator
+
+    manifest = ConfigLoader.load_manifest(config_path)
+    ModelCardGenerator.generate_model_card(
+        manifest=manifest,
+        summary=None,
+        output_path=output_path,
+    )
+    console.print(f"[bold green][OK] Hugging Face Model Card generated:[/bold green] {output_path}")
+
+
 if __name__ == "__main__":
     app()
 

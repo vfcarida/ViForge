@@ -88,3 +88,7 @@ Thumbs.db
 
 # Clean venv used for lockfile verification
 test_clean_venv/
+
+# MkDocs build directory
+site/
+

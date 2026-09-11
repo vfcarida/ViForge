@@ -11,6 +11,7 @@ import streamlit as st
 import yaml
 
 from viforge.analysis.unified_pareto import UnifiedParetoEngine
+from viforge.config.schemas import HardwareConfig, HyperparametersConfig, ModelConfig
 from viforge.integrations.vipym import (
     RECIPE_CATALOG,
     CompressionRecipe,
@@ -18,6 +19,10 @@ from viforge.integrations.vipym import (
     ViPymRunner,
     is_vipym_available,
 )
+from viforge.methods.synthetic import EvolStrategy, SyntheticDataPipeline
+from viforge.orchestration.slurm import SlurmJobGenerator
+from viforge.training.distributed import DistributedConfigGenerator
+from viforge.training.profiler import ResourceProfiler
 from viforge.utils.doctor import SystemDoctor
 
 # Page Configuration & Aesthetics
@@ -121,12 +126,14 @@ st.markdown(
 )
 
 # Tabs
-tab_overview, tab_pareto, tab_stats, tab_config, tab_vipym, tab_doctor = st.tabs([
+tab_overview, tab_pareto, tab_stats, tab_config, tab_vipym, tab_synthetic, tab_distributed, tab_doctor = st.tabs([
     "📊 Overview & KPIs",
     "🎯 Unified Pareto Frontier",
     "📐 Statistical Rigor",
     "⚙️ Experiment Studio",
     "🗜️ ViPym Compression Hub",
+    "🧬 Synthetic & Self-Play",
+    "🌐 Distributed & Slurm Advisor",
     "🩺 System Doctor",
 ])
 
@@ -394,7 +401,125 @@ with tab_vipym:
                     st.error(f"Execution failed: {res}")
 
 # ----------------------------------------------------
-# TAB 6: SYSTEM DOCTOR
+# TAB 6: SYNTHETIC & SELF-PLAY STUDIO
+# ----------------------------------------------------
+with tab_synthetic:
+    st.subheader("🧬 Synthetic Task Generation, Evol-Instruct & Self-Play Studio")
+    st.markdown(
+        "Bootstrap specialized instruction datasets and pairwise preference sets (`chosen` vs `rejected`) "
+        "with automated AST validation and length-bias mitigation."
+    )
+
+    syn_col1, syn_col2 = st.columns([1, 1])
+    with syn_col1:
+        st.markdown("##### 1. Evol-Instruct Mutation Configuration")
+        evol_strat = st.selectbox(
+            "Evolution Strategy",
+            [e.value for e in EvolStrategy],
+            format_func=lambda x: x.replace("_", " ").title(),
+        )
+        sample_prompt = st.text_area(
+            "Seed Instruction",
+            value="Write a Python function to validate and execute concurrent database transactions.",
+            height=90,
+        )
+        mutated_preview = SyntheticDataPipeline.mutate_prompt(sample_prompt, strategy=evol_strat)
+        st.caption("Mutated Prompt Preview:")
+        st.code(mutated_preview, language="markdown")
+
+    with syn_col2:
+        st.markdown("##### 2. Self-Play Preference Pair Verification")
+        cand_a_code = st.text_area(
+            "Candidate A (Clean & Valid)",
+            value="```python\ndef execute_tx(tx_id: str) -> bool:\n    # Thread-safe atomic transaction\n    return True\n```",
+            height=110,
+        )
+        cand_b_code = st.text_area(
+            "Candidate B (Verbose / Complex)",
+            value="```python\ndef execute_tx(tx_id: str) -> bool:\n    print('Starting transaction...')\n    for i in range(10): pass\n    return True\n```",
+            height=110,
+        )
+
+        if st.button("⚖️ Evaluate & Mine Preference Pair"):
+            pipeline = SyntheticDataPipeline()
+            pair = pipeline.create_preference_pair(sample_prompt, cand_a_code, cand_b_code)
+            if pair:
+                st.success(f"Preference Pair Curated! (Confidence Margin: {pair['margin']:.2f})")
+                st.write("**Chosen:**")
+                st.code(pair["chosen"], language="python")
+                st.write("**Rejected:**")
+                st.code(pair["rejected"], language="python")
+            else:
+                st.warning("Both candidates scored identically or failed syntax verification.")
+
+# ----------------------------------------------------
+# TAB 7: DISTRIBUTED & SLURM ADVISOR
+# ----------------------------------------------------
+with tab_distributed:
+    st.subheader("🌐 Distributed Architecture, Multi-GPU Sharding & HPC Slurm Advisor")
+    st.markdown(
+        "Analyze exact per-GPU VRAM consumption across **DDP, ZeRO-1, ZeRO-2, ZeRO-3, and FSDP2**, "
+        "and generate ready-to-submit HPC Slurm scripts or Accelerate configs."
+    )
+
+    dist_col1, dist_col2 = st.columns([1, 1])
+    with dist_col1:
+        st.markdown("##### Cluster Topology")
+        cluster_gpus = st.select_slider("Number of GPUs", options=[1, 2, 4, 8, 16, 32], value=4)
+        gpu_vram_gb = st.selectbox("VRAM per GPU", [24.0, 40.0, 80.0, 96.0], index=2)
+        model_size_b = st.slider("Model Size (Billion Parameters)", 1.5, 72.0, 14.0, 0.5)
+
+        dummy_model = ModelConfig(name=selected_model.split("/")[-1], hf_hub_id=selected_model, total_parameters=model_size_b)
+        dummy_hw = HardwareConfig(num_gpus=cluster_gpus, vram_per_gpu_gb=gpu_vram_gb)
+        dummy_hp = HyperparametersConfig(max_seq_len=2048, per_device_batch_size=2)
+
+        rec = ResourceProfiler.recommend_distributed_strategy(dummy_model, dummy_hp, dummy_hw)
+        st.info(f"**Recommended Strategy:** `{rec['recommended_strategy'].upper()}`\n\n{rec['rationale']}")
+
+    with dist_col2:
+        st.markdown("##### Per-GPU Memory Partitioning Breakdown")
+        dist_rows = []
+        for s_name, p in rec["all_profiles"].items():
+            dist_rows.append({
+                "Strategy": s_name.upper(),
+                "Weights (GB)": p["weight_memory_per_gpu_gb"],
+                "Gradients (GB)": p["gradient_memory_per_gpu_gb"],
+                "Optimizer (GB)": p["optimizer_memory_per_gpu_gb"],
+                "Total VRAM (GB)": p["total_estimated_vram_per_gpu_gb"],
+                "Fits in VRAM": "✅ Yes" if p["fits_in_vram"] else "❌ OOM",
+            })
+        df_dist = pd.DataFrame(dist_rows)
+        st.dataframe(df_dist, use_container_width=True)
+
+        fig_dist = px.bar(
+            df_dist,
+            x="Strategy",
+            y="Total VRAM (GB)",
+            color="Fits in VRAM",
+            title=f"Total VRAM per GPU (Limit: {gpu_vram_gb:.0f} GB)",
+            color_discrete_map={"✅ Yes": "#10b981", "❌ OOM": "#ef4444"},
+        )
+        fig_dist.add_hline(y=gpu_vram_gb * 0.85, line_dash="dash", line_color="#f59e0b", annotation_text="Safety Limit (85%)")
+        fig_dist.update_layout(template="plotly_dark", height=300, margin=dict(l=20, r=20, t=40, b=20))
+        st.plotly_chart(fig_dist, use_container_width=True)
+
+    st.markdown("##### 🚀 Export Cluster Launch Artifacts")
+    btn_col1, btn_col2 = st.columns(2)
+    with btn_col1:
+        if st.button("Generate Accelerate FSDP2 Config"):
+            acc_cfg = DistributedConfigGenerator.generate_accelerate_config(dummy_hw, strategy="fsdp2")
+            st.code(yaml.dump(acc_cfg, default_flow_style=False), language="yaml")
+    with btn_col2:
+        if st.button("Generate Slurm HPC Batch Script"):
+            sbatch_txt = SlurmJobGenerator.generate_sbatch_script(
+                manifest=dummy_model,
+                nodes=max(1, cluster_gpus // 8),
+                gpus_per_node=min(8, cluster_gpus),
+            )
+            st.code(sbatch_txt, language="bash")
+
+# ----------------------------------------------------
+# TAB 8: SYSTEM DOCTOR
 # ----------------------------------------------------
 with tab_doctor:
     st.subheader("ViForge Environment Diagnostics & System Doctor")
