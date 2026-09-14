@@ -107,6 +107,52 @@ class ModelRegistry:
                 pricing=BasePricingConfig(prompt_usd_per_1m=0.04, completion_usd_per_1m=0.08),
             )
         )
+        # Llama 3.2 1B Instruct
+        self.register(
+            ModelConfig(
+                name="Llama-3.2-1B-Instruct",
+                hf_hub_id="meta-llama/Llama-3.2-1B-Instruct",
+                revision="main",
+                model_type=ModelType.CAUSAL_LM,
+                total_parameters=1.23,
+                active_parameters=1.23,
+                context_window=131072,
+                target_modules=[
+                    "q_proj",
+                    "k_proj",
+                    "v_proj",
+                    "o_proj",
+                    "gate_proj",
+                    "up_proj",
+                    "down_proj",
+                ],
+                expected_license="Llama-3.2",
+                pricing=BasePricingConfig(prompt_usd_per_1m=0.04, completion_usd_per_1m=0.08),
+            )
+        )
+        # SmolLM2 1.7B Instruct
+        self.register(
+            ModelConfig(
+                name="SmolLM2-1.7B-Instruct",
+                hf_hub_id="HuggingFaceTB/SmolLM2-1.7B-Instruct",
+                revision="main",
+                model_type=ModelType.CAUSAL_LM,
+                total_parameters=1.71,
+                active_parameters=1.71,
+                context_window=8192,
+                target_modules=[
+                    "q_proj",
+                    "k_proj",
+                    "v_proj",
+                    "o_proj",
+                    "gate_proj",
+                    "up_proj",
+                    "down_proj",
+                ],
+                expected_license="Apache-2.0",
+                pricing=BasePricingConfig(prompt_usd_per_1m=0.04, completion_usd_per_1m=0.08),
+            )
+        )
 
     def register(self, config: ModelConfig) -> None:
         self._models[config.name.lower()] = config

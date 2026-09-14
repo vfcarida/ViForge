@@ -310,8 +310,10 @@ To replicate full empirical results on live hardware without mock inference:
 
 | Path | Description |
 |---|---|
-| `configs/experiments/deepseek_v4_pro_software_engineering.yaml` | Master 5-stage experiment manifest |
+| `configs/experiments/deepseek_v4_pro_software_engineering.yaml` | Master 5-stage experiment manifest (Simulation Persona) |
+| `configs/experiments/qwen2.5_coder_1.5b_quickstart.yaml` | Real Open-Weights LoRA specialization manifest |
 | `configs/experiments/exp_002_deepseek_v4_pro_qlora_sft.yaml` | Single-GPU QLoRA entry point config |
 | `runs/deepseek_v4_pro_software_engineering_master/reports/` | Automated Markdown, HTML, and JSON reports |
+| `runs/qwen2.5_coder_1.5b_quickstart/reports/` | Verified Open-Weights summary reports & HF Model Card |
 | `runs/deepseek_v4_pro_software_engineering_master/metrics/` | Per-stage training metrics and telemetry JSONs |
 

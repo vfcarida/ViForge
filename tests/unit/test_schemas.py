@@ -61,3 +61,26 @@ def test_experiment_manifest_roundtrip():
     reconstructed = ExperimentManifest.model_validate(data)
     assert reconstructed.experiment_id == "exp_test_001"
     assert reconstructed.pipeline[0].hyperparameters.quantization == QuantizationType.NF4
+
+
+@pytest.mark.unit
+def test_model_registry_defaults():
+    from viforge.models.registry import model_registry
+
+    all_models = model_registry.list_all()
+    hub_ids = {m.hf_hub_id for m in all_models}
+
+    assert "deepseek-ai/deepseek-v4-pro" in hub_ids
+    assert "Qwen/Qwen2.5-Coder-1.5B-Instruct" in hub_ids
+    assert "meta-llama/Llama-3.2-1B-Instruct" in hub_ids
+    assert "HuggingFaceTB/SmolLM2-1.7B-Instruct" in hub_ids
+
+    llama = model_registry.get_config("meta-llama/Llama-3.2-1B-Instruct")
+    assert llama.total_parameters == 1.23
+    assert llama.context_window == 131072
+    assert "q_proj" in llama.target_modules
+
+    smol = model_registry.get_config("HuggingFaceTB/SmolLM2-1.7B-Instruct")
+    assert smol.total_parameters == 1.71
+    assert smol.expected_license == "Apache-2.0"
+

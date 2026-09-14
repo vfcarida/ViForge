@@ -4,15 +4,22 @@ ViForge Contamination and Benchmark Leakage Detector.
 
 import re
 from typing import Any, Dict, List, Optional, Set, Tuple
+from viforge.preprocessing.ast_normalizer import ASTAlphaNormalizer
 from viforge.utils.logging import logger
 
 
 class ContaminationDetector:
     """
-    Scans candidate dataset records against canonical evaluation benchmark n-gram lookup banks.
+    Scans candidate dataset records against canonical evaluation benchmark n-gram lookup banks
+    and AST alpha-equivalence signatures.
     """
 
-    def __init__(self, ngram_size: int = 10, max_allowed_overlap: float = 0.05):
+    def __init__(
+        self,
+        ngram_size: int = 10,
+        max_allowed_overlap: float = 0.05,
+        enable_ast_shield: bool = True,
+    ):
         if ngram_size < 1:
             raise ValueError(f"ngram_size must be positive integer >= 1, got {ngram_size}")
         if not (0.0 <= max_allowed_overlap <= 1.0):
@@ -21,7 +28,9 @@ class ContaminationDetector:
             )
         self.ngram_size = ngram_size
         self.default_max_allowed_overlap = max_allowed_overlap
+        self.enable_ast_shield = enable_ast_shield
         self._benchmark_ngrams: Dict[str, Set[str]] = {}
+        self._benchmark_ast_hashes: Dict[str, Set[str]] = {}
 
     def _normalize_tokens(self, text: str) -> List[str]:
         text = re.sub(r"#.*$", "", text, flags=re.MULTILINE)
@@ -44,6 +53,17 @@ class ContaminationDetector:
             ngrams = self._extract_ngrams(tokens)
             bank.update(ngrams)
         self._benchmark_ngrams[benchmark_name] = bank
+
+        if self.enable_ast_shield:
+            ast_bank: Set[str] = set()
+            for text in benchmark_texts:
+                blocks = ASTAlphaNormalizer.extract_code_blocks(text)
+                for block in blocks:
+                    h = ASTAlphaNormalizer.compute_ast_hash(block)
+                    if h:
+                        ast_bank.add(h)
+            self._benchmark_ast_hashes[benchmark_name] = ast_bank
+
         logger.info(
             f"Registered benchmark '{benchmark_name}' with {len(bank)} unique {self.ngram_size}-grams."
         )
@@ -78,14 +98,25 @@ class ContaminationDetector:
     def check_sample(self, text: str) -> Dict[str, float]:
         tokens = self._normalize_tokens(text)
         sample_ngrams = self._extract_ngrams(tokens)
-        if not sample_ngrams:
-            return {b: 0.0 for b in self._benchmark_ngrams}
-
         overlaps = {}
         for b_name, b_bank in self._benchmark_ngrams.items():
-            intersection = sample_ngrams.intersection(b_bank)
-            overlap_ratio = len(intersection) / len(sample_ngrams)
+            if sample_ngrams:
+                intersection = sample_ngrams.intersection(b_bank)
+                overlap_ratio = len(intersection) / len(sample_ngrams)
+            else:
+                overlap_ratio = 0.0
             overlaps[b_name] = round(overlap_ratio, 4)
+
+        if self.enable_ast_shield:
+            sample_blocks = ASTAlphaNormalizer.extract_code_blocks(text)
+            for block in sample_blocks:
+                h = ASTAlphaNormalizer.compute_ast_hash(block)
+                if not h:
+                    continue
+                for b_name, ast_bank in self._benchmark_ast_hashes.items():
+                    if h in ast_bank:
+                        overlaps[b_name] = 1.0
+
         return overlaps
 
     def filter_dataset(

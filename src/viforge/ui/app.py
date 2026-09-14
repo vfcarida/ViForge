@@ -10,7 +10,7 @@ import plotly.graph_objects as go
 import streamlit as st
 import yaml
 
-from viforge.analysis.unified_pareto import UnifiedParetoEngine
+from viforge.analysis.unified_pareto import MultiCampaignParetoComparator, UnifiedParetoEngine
 from viforge.config.schemas import HardwareConfig, HyperparametersConfig, ModelConfig
 from viforge.integrations.vipym import (
     RECIPE_CATALOG,
@@ -259,6 +259,117 @@ with tab_pareto:
             unsafe_allow_html=True,
         )
 
+    st.divider()
+    st.subheader("🌐 Cross-Model Campaign Benchmark Comparison")
+    st.caption("Overlay multiple model architectures to discover the global non-dominated Pareto frontier.")
+
+    with st.expander("Compare Multiple Model Campaigns", expanded=True):
+        models_to_compare = st.multiselect(
+            "Select Models to Compare",
+            ["Qwen2.5-Coder-7B", "Llama-3.1-8B", "DeepSeek-Coder-1.3B"],
+            default=["Qwen2.5-Coder-7B", "Llama-3.1-8B", "DeepSeek-Coder-1.3B"],
+        )
+
+        if len(models_to_compare) >= 2:
+            campaign_data = {}
+            if "Qwen2.5-Coder-7B" in models_to_compare:
+                campaign_data["Qwen2.5-Coder-7B"] = default_points
+            if "Llama-3.1-8B" in models_to_compare:
+                campaign_data["Llama-3.1-8B"] = UnifiedParetoEngine.build_unified_points(
+                    model_name="Llama-3.1-8B",
+                    base_domain_score=0.46,
+                    base_retention_score=0.68,
+                    specialized_domain_score=0.61,
+                    specialized_retention_score=0.67,
+                    training_cost_usd=29.00,
+                )
+            if "DeepSeek-Coder-1.3B" in models_to_compare:
+                campaign_data["DeepSeek-Coder-1.3B"] = UnifiedParetoEngine.build_unified_points(
+                    model_name="DeepSeek-Coder-1.3B",
+                    base_domain_score=0.38,
+                    base_retention_score=0.55,
+                    specialized_domain_score=0.53,
+                    specialized_retention_score=0.54,
+                    training_cost_usd=9.50,
+                )
+
+            global_pts = MultiCampaignParetoComparator.compute_global_frontier(campaign_data)
+
+            # Interactive Plotly Multi-Model Chart
+            fig_multi = go.Figure()
+            palettes = MultiCampaignParetoComparator.MODEL_PALETTES
+            for idx, (m_name, pts) in enumerate(campaign_data.items()):
+                color = palettes[idx % len(palettes)]
+                sorted_pts = sorted(pts, key=lambda p: p.serving_memory_gb)
+                fig_multi.add_trace(
+                    go.Scatter(
+                        x=[p.serving_memory_gb for p in sorted_pts],
+                        y=[p.domain_score for p in sorted_pts],
+                        mode="markers+lines",
+                        name=f"{m_name}",
+                        line=dict(color=color, width=2, dash="dash"),
+                        marker=dict(size=10, color=color),
+                        hovertext=[
+                            f"<b>{p.variant_label}</b><br>VRAM: {p.serving_memory_gb}GB<br>Score: {p.domain_score:.3f}<br>Cost: ${p.total_cost_usd:.2f}"
+                            for p in sorted_pts
+                        ],
+                        hoverinfo="text",
+                    )
+                )
+
+            # Global frontier
+            g_opt = [p for p in global_pts if p.is_pareto_optimal]
+            if g_opt:
+                sorted_g = sorted(g_opt, key=lambda p: p.serving_memory_gb)
+                fig_multi.add_trace(
+                    go.Scatter(
+                        x=[p.serving_memory_gb for p in sorted_g],
+                        y=[p.domain_score for p in sorted_g],
+                        mode="markers+lines+text",
+                        name="🏆 Global Pareto Frontier",
+                        text=[p.variant_label.split(" (")[-1].replace(")", "") for p in sorted_g],
+                        textposition="top right",
+                        line=dict(color="#10b981", width=3),
+                        marker=dict(size=14, color="#10b981", symbol="star", line=dict(width=2, color="#ffffff")),
+                        hovertext=[
+                            f"<b>{p.variant_label} (GLOBAL OPTIMAL)</b><br>Score: {p.domain_score:.3f}<br>VRAM: {p.serving_memory_gb}GB"
+                            for p in sorted_g
+                        ],
+                        hoverinfo="text",
+                    )
+                )
+
+            fig_multi.update_layout(
+                title="Cross-Model Pareto Frontier: Serving VRAM vs Accuracy",
+                xaxis_title="Serving VRAM Footprint (GB) [Lower is Better]",
+                yaxis_title="Domain Capability Score [Higher is Better]",
+                template="plotly_dark",
+                paper_bgcolor="#0f172a",
+                plot_bgcolor="#1e293b",
+                height=450,
+            )
+            st.plotly_chart(fig_multi, use_container_width=True)
+
+            # Table of global optimal variants
+            st.markdown("##### 🏆 Global Non-Dominated Variants Across Architectures")
+            opt_rows = [
+                {
+                    "Model": p.model_name,
+                    "Variant": p.variant_label,
+                    "Domain Score": f"{p.domain_score:.3f}",
+                    "Retention": f"{p.general_retention_score:.3f}",
+                    "VRAM (GB)": f"{p.serving_memory_gb:.1f}",
+                    "Latency (ms)": f"{p.serving_latency_ms:.0f}",
+                    "Cost ($)": f"${p.total_cost_usd:.2f}",
+                    "Cap / $": f"{p.capability_per_dollar:.1f}",
+                }
+                for p in g_opt
+            ]
+            st.dataframe(pd.DataFrame(opt_rows), use_container_width=True)
+        else:
+            st.info("Select at least 2 models to compute cross-model Pareto comparisons.")
+
+
 # ----------------------------------------------------
 # TAB 3: STATISTICAL RIGOR & BENCHMARKS
 # ----------------------------------------------------
@@ -399,6 +510,64 @@ with tab_vipym:
                     st.json(res)
                 else:
                     st.error(f"Execution failed: {res}")
+
+    st.divider()
+    st.subheader("🤗 Hugging Face Hub 1-Click Publisher")
+    st.caption("Publish specialized model weights, LoRA adapters, and auto-generated Model Cards directly to Hugging Face Hub.")
+
+    hf_col1, hf_col2 = st.columns([1, 1])
+    with hf_col1:
+        hf_repo_id = st.text_input(
+            "Hugging Face Repository ID",
+            value="viforge-org/qwen2.5-coder-specialist",
+            help="Target repository ID (e.g. username/repo-name)",
+        )
+        hf_token = st.text_input(
+            "Hugging Face API Token (Optional)",
+            type="password",
+            help="Defaults to HF_TOKEN environment variable if empty",
+        )
+        hf_model_dir = st.text_input(
+            "Model or LoRA Adapter Directory",
+            value="runs/software_engineering/specialist_model",
+            help="Local path to directory containing model weights or LoRA adapter",
+        )
+    with hf_col2:
+        hf_model_card = st.text_input(
+            "Model Card Path (Optional)",
+            value="README.md",
+            help="Path to README.md model card file to publish",
+        )
+        hf_commit_msg = st.text_input(
+            "Commit Message",
+            value="Upload specialized model via ViForge",
+        )
+        hf_private = st.checkbox("Create as Private Repository", value=False)
+
+        if st.button("🚀 Publish to Hugging Face Hub"):
+            model_path_obj = Path(hf_model_dir)
+            if not model_path_obj.exists():
+                st.warning(f"Directory `{hf_model_dir}` not found on disk. Creating demo model package.")
+                model_path_obj = Path("runs/mock_hub_demo")
+                model_path_obj.mkdir(parents=True, exist_ok=True)
+                (model_path_obj / "adapter_config.json").write_text("{}", encoding="utf-8")
+
+            with st.spinner(f"Publishing model to {hf_repo_id}..."):
+                try:
+                    from viforge.artifacts.hub import HuggingFaceHubPublisher
+
+                    url = HuggingFaceHubPublisher.upload_model(
+                        model_dir=model_path_obj,
+                        repo_id=hf_repo_id,
+                        token=hf_token.strip() if hf_token.strip() else None,
+                        private=hf_private,
+                        commit_message=hf_commit_msg,
+                        model_card_path=Path(hf_model_card) if hf_model_card and Path(hf_model_card).exists() else None,
+                    )
+                    st.success(f"✅ Model published successfully! [View on Hugging Face]({url})")
+                    st.markdown(f"**Hub URL:** `{url}`")
+                except Exception as e:
+                    st.error(f"Failed to publish to Hugging Face Hub: {e}")
 
 # ----------------------------------------------------
 # TAB 6: SYNTHETIC & SELF-PLAY STUDIO

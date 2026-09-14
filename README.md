@@ -5,11 +5,13 @@
 **An End-to-End Post-Training, Evaluation & Pareto-Optimality Platform**
 
 [![Python 3.10+](https://img.shields.io/badge/python-3.10%20%7C%203.11%20%7C%203.12-blue.svg)](https://www.python.org/downloads/)
+[![PyPI version](https://img.shields.io/badge/pypi-v0.2.0-blue.svg)](https://pypi.org/project/viforge/)
 [![PyTorch 2.0+](https://img.shields.io/badge/PyTorch-2.0%2B-ee4c2c.svg)](https://pytorch.org/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![CI Status](https://img.shields.io/badge/CI-Passing-brightgreen.svg)]()
 [![Code Style: Ruff](https://img.shields.io/badge/code%20style-ruff-000000.svg)](https://github.com/astral-sh/ruff)
-[![Tests: 153/153 Passed](https://img.shields.io/badge/tests-153%2F153%20passed-success.svg)]()
+[![Tests: 166/166 Passed](https://img.shields.io/badge/tests-166%2F166%20passed-success.svg)]()
+[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/vfcarida/ViForge/blob/main/notebooks/quickstart_colab.ipynb)
 [![Deployment: GGUF / Ollama / vLLM](https://img.shields.io/badge/deployment-GGUF%20%7C%20Ollama%20%7C%20vLLM-purple.svg)]()
 
 <p align="center">
@@ -29,7 +31,7 @@
 
 ## 🎯 What is ViForge?
 
-**ViForge** is a production-grade open-source post-training experimentation platform and empirical evaluation framework. It systematically transforms cost-efficient general-purpose base models (such as **DeepSeek V4 Pro**, Llama 3, Qwen 2.5, and Mistral) into high-performing domain experts for **Software Engineering** and reasoning tasks.
+**ViForge** is a production-grade open-source post-training experimentation platform and empirical evaluation framework. It systematically transforms cost-efficient general-purpose base models (such as **Qwen 2.5 Coder**, Llama 3, DeepSeek Coder, and Mistral) into high-performing domain experts for **Software Engineering** and reasoning tasks.
 
 Rather than assuming fine-tuning is always optimal, ViForge rigorously tests:
 
@@ -204,6 +206,11 @@ viforge doctor
 
 Execute the complete end-to-end specialization pipeline (Profiling $\rightarrow$ Baseline $\rightarrow$ Specialization $\rightarrow$ Evaluation $\rightarrow$ Pareto Optimization $\rightarrow$ Reporting):
 
+> [!NOTE]
+> **Understanding the Two Execution Tracks**:
+> - **Track A (Fast Local Simulation Engine)**: Designed for development, CI/CD, testing, and architectural exploration. It executes the entire 5-stage research campaign DAG using deterministic in-memory fakes and AST verification in seconds, with zero GPU memory required. The referenced `deepseek_v4_pro` configuration serves as a comprehensive simulation benchmark persona.
+> - **Track B (Real Open-Weights Live Specialization)**: Connects to the Hugging Face Hub, downloads real open-weights models (`Qwen/Qwen2.5-Coder-1.5B-Instruct`), and executes real forward/backward passes, PEFT LoRA training, and benchmark evaluations on local GPU/CPU hardware.
+
 #### Track A: Instant 10-Second Offline Tour (Zero GPU required)
 Run the full 5-stage research campaign simulation using deterministic local fakes and AST verification without downloading model checkpoints or requiring external APIs:
 
@@ -365,7 +372,7 @@ ViForge/
 ViForge is built with rigorous test-driven engineering. All tests run offline with deterministic fakes and zero external API dependencies:
 
 ```bash
-# Run full test suite (153/153 passing)
+# Run full test suite (166/166 passing)
 python -m pytest tests/unit/ -v
 python -m pytest tests/contract/ tests/smoke/ tests/integration/ tests/e2e/ -v
 

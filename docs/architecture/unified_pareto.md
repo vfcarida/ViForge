@@ -83,3 +83,28 @@ The ViForge Studio web interface provides:
 - **Visual Experiment Designer:** Interactive YAML assembly with real-time pre-flight VRAM and cost estimators.
 - **ViPym Compression Hub:** Point-and-click execution of downstream recipes (`smoothquant_w8a8`, `autoround_w4a16`, etc.) in simulated mock or live mode.
 - **System Doctor:** Real-time hardware and dependency health diagnostics.
+
+---
+
+## 5. Cross-Model Multi-Campaign Benchmark Comparison
+
+When evaluating multiple base model architectures (e.g. Qwen2.5-Coder-7B vs Llama-3.1-8B vs DeepSeek-Coder-1.3B) or comparing competing specialization recipes, ViForge provides cross-model Pareto comparison via `MultiCampaignParetoComparator`:
+
+### CLI Multi-Campaign Comparison
+```bash
+# Compare multiple campaign Pareto reports on a unified global frontier
+viforge compare-campaigns \
+  runs/qwen7b/unified_pareto.json \
+  runs/llama8b/unified_pareto.json \
+  runs/deepseek1b/unified_pareto.json \
+  --output-dir reports/cross_model_pareto
+```
+
+The command outputs:
+1. A summary table comparing model architectures, peak accuracy, minimum VRAM, and number of globally non-dominated variants.
+2. `multi_model_pareto.json`: Structured benchmark metrics, campaign summaries, and global sweet spot recommendations.
+3. `multi_model_pareto.html`: Interactive Dark Glassmorphism Plotly chart with color-coded model traces and gold star callouts for globally optimal configurations.
+
+### Studio Multi-Model Campaign Overlay
+In **ViForge Studio** Tab 2 (**🎯 Unified Pareto Frontier**), the **Cross-Model Campaign Benchmark Comparison** expander allows toggling model architectures simultaneously to visualize trade-offs directly in browser.
+

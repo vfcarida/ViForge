@@ -60,6 +60,10 @@ viforge run configs/experiments/deepseek_v4_pro_software_engineering.yaml --mock
 viforge run configs/experiments/qwen2.5_coder_1.5b_quickstart.yaml --live
 ```
 
+!!! note "Track A vs. Track B"
+    - **Track A (Simulation Engine)**: Deterministic in-memory execution using simulated benchmarks and AST syntax validation for fast iteration and CI testing with zero GPU requirements.
+    - **Track B (Live Specialization)**: End-to-end training and evaluation on real open-weights models (`Qwen/Qwen2.5-Coder-1.5B-Instruct`) hosted on Hugging Face Hub.
+
 ---
 
 ## Documentation Navigation

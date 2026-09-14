@@ -56,6 +56,7 @@ nav:
       - DeepSeek V4 Pro SWE: case-studies/deepseek-v4-pro-swe.md
   - Integrations:
       - ViPym Compression: integrations/vipym.md
+      - Hugging Face Hub: integrations/huggingface.md
   - Quality & Testing:
       - Testing Guide: testing/README.md
   - Audit & Plan:

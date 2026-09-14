@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.3.0] - 2026-09-14
+
+### Added
+* **Modular CLI Sub-App Architecture**: Modularized the CLI into focused sub-command suites in `src/viforge/cli/commands/` (`profile`, `data`, `train`, `evaluate`, `export`, `orchestrate`, `ui`), shrinking `main.py` to 38 lines while preserving 100% backward compatibility across all 26 commands.
+* **Hugging Face Hub Direct Integration**: Added `HuggingFaceHubPublisher` (`src/viforge/artifacts/hub.py`), the `viforge push-to-hub` CLI command, and a 1-Click UI publisher in ViForge Studio Tab 5 for seamless model, adapter, and Model Card publishing.
+* **Cross-Model Multi-Campaign Pareto Benchmark**: Added `MultiCampaignParetoComparator` (`src/viforge/analysis/unified_pareto.py`), the `viforge compare-campaigns` CLI command, and multi-trace interactive Plotly visualizations in ViForge Studio Tab 2 to evaluate and discover global non-dominated frontiers across competing model architectures.
+* **Enhanced Contamination Shield with AST Alpha-Equivalence**: Added `ASTAlphaNormalizer` (`src/viforge/preprocessing/ast_normalizer.py`) wired directly into `ContaminationDetector`, preventing code benchmark leakage even under aggressive variable renaming, docstring alteration, and comment masking.
+* **Expanded Automated Test Suite**: 179 total tests passing with 0 failures, 100% Ruff lint compliance, and 0 Mypy issues across 96 source files.
+
+---
+
 ## [0.2.0] - 2026-09-12
 
 ### Added

@@ -76,12 +76,14 @@ When comparing Candidate A and Candidate B:
 
 ---
 
-## Preventive Contamination Shielding
+## Preventive Contamination Shielding & AST Alpha-Equivalence
 
 To guarantee rigorous evaluation integrity without data leakage:
 - Every candidate sample (prompt + completion) is evaluated by the `ContaminationDetector`.
-- An $N$-gram sliding window (default: $N=10$ tokens) computes Jaccard and containment ratios against pre-registered evaluation benchmarks (`humaneval`, `mbpp`, `swe-bench`).
-- Any candidate with overlap exceeding `max_allowed_overlap` (default: 5%) is **immediately flagged and omitted** from the final dataset.
+- **Multi-Tiered Shielding:**
+  1. **Sliding $N$-gram Token Overlap:** Default: $N=10$ tokens computes containment ratios against pre-registered evaluation benchmarks (`humaneval_plus`, `mbpp_plus`, `swe_bench_lite`).
+  2. **AST Alpha-Equivalence Normalization (`ASTAlphaNormalizer`):** Python code blocks undergo docstring stripping and canonical alpha-renaming across all variables, arguments, and local functions. Syntactically identical logic disguised under variable renames or comment edits is hashed and flagged as definitive 100% contamination.
+- Any candidate with overlap exceeding `max_allowed_overlap` (default: 5%) or matching an AST alpha-equivalence signature is **immediately flagged and omitted** from the final dataset.
 
 ---
 

@@ -4,7 +4,7 @@ ViForge Unified Pareto Engine: End-to-End Specialization & Downstream Compressio
 
 import json
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Union
 from pydantic import BaseModel, Field
 
 from viforge.utils.logging import logger
@@ -504,3 +504,201 @@ class UnifiedParetoEngine:
 </body></html>"""
             output_path.write_text(html, encoding="utf-8")
             return output_path
+
+
+class MultiCampaignParetoComparator:
+    """
+    Cross-model benchmark comparison engine. Computes global multi-objective Pareto frontiers
+    across different model families, sizes, and specialization campaigns.
+    """
+
+    MODEL_PALETTES = [
+        "#6366f1",  # Indigo
+        "#06b6d4",  # Cyan
+        "#f59e0b",  # Amber
+        "#ec4899",  # Pink
+        "#10b981",  # Emerald
+        "#8b5cf6",  # Violet
+        "#ef4444",  # Red
+    ]
+
+    @classmethod
+    def load_campaign(cls, path: Union[str, Path]) -> List[UnifiedParetoPoint]:
+        """Load unified pareto points from a JSON file."""
+        file_path = Path(path)
+        if not file_path.exists():
+            raise FileNotFoundError(f"Pareto campaign file not found: {path}")
+        with open(file_path, "r", encoding="utf-8") as f:
+            data = json.load(f)
+        raw_list = data.get("frontier", data) if isinstance(data, dict) else data
+        return [UnifiedParetoPoint(**item) for item in raw_list]
+
+    @classmethod
+    def compute_global_frontier(
+        cls, campaigns: Dict[str, List[UnifiedParetoPoint]]
+    ) -> List[UnifiedParetoPoint]:
+        """
+        Compute global Pareto optimality across all models and variants in all campaigns.
+        """
+        all_points: List[UnifiedParetoPoint] = []
+        for _, points in campaigns.items():
+            for p in points:
+                all_points.append(p.model_copy())
+
+        for i, pt_a in enumerate(all_points):
+            is_dominated = False
+            for j, pt_b in enumerate(all_points):
+                if i == j:
+                    continue
+                b_better_or_equal = (
+                    pt_b.domain_score >= pt_a.domain_score - 1e-4
+                    and pt_b.general_retention_score >= pt_a.general_retention_score - 1e-4
+                    and pt_b.serving_memory_gb <= pt_a.serving_memory_gb + 1e-4
+                    and pt_b.serving_latency_ms <= pt_a.serving_latency_ms + 1e-4
+                    and pt_b.total_cost_usd <= pt_a.total_cost_usd + 1e-4
+                )
+                b_strictly_better = (
+                    pt_b.domain_score > pt_a.domain_score + 1e-4
+                    or pt_b.general_retention_score > pt_a.general_retention_score + 1e-4
+                    or pt_b.serving_memory_gb < pt_a.serving_memory_gb - 1e-4
+                    or pt_b.serving_latency_ms < pt_a.serving_latency_ms - 1e-4
+                    or pt_b.total_cost_usd < pt_a.total_cost_usd - 1e-4
+                )
+                if b_better_or_equal and b_strictly_better:
+                    is_dominated = True
+                    break
+            pt_a.is_pareto_optimal = not is_dominated
+
+        return all_points
+
+    @classmethod
+    def export_multi_model_json(
+        cls,
+        campaigns: Dict[str, List[UnifiedParetoPoint]],
+        global_points: List[UnifiedParetoPoint],
+        output_path: Path,
+    ) -> Path:
+        """Export cross-model comparison results to JSON."""
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        summary = {
+            "campaign_count": len(campaigns),
+            "models": list(campaigns.keys()),
+            "total_variants_evaluated": len(global_points),
+            "global_pareto_optimal_count": sum(1 for p in global_points if p.is_pareto_optimal),
+            "campaign_summaries": {
+                name: {
+                    "variants_count": len(pts),
+                    "best_domain_score": max((p.domain_score for p in pts), default=0.0),
+                    "best_retention_score": max((p.general_retention_score for p in pts), default=0.0),
+                    "min_vram_gb": min((p.serving_memory_gb for p in pts), default=0.0),
+                    "min_latency_ms": min((p.serving_latency_ms for p in pts), default=0.0),
+                }
+                for name, pts in campaigns.items()
+            },
+            "global_sweet_spots": [
+                {"category": r.category, "point": r.point.variant_label, "rationale": r.rationale}
+                for r in UnifiedParetoEngine.find_sweet_spots(global_points)
+            ],
+            "global_frontier": [p.model_dump() for p in global_points if p.is_pareto_optimal],
+            "all_points": [p.model_dump() for p in global_points],
+        }
+        output_path.write_text(json.dumps(summary, indent=2), encoding="utf-8")
+        return output_path
+
+    @classmethod
+    def generate_multi_model_html_chart(
+        cls,
+        campaigns: Dict[str, List[UnifiedParetoPoint]],
+        global_points: List[UnifiedParetoPoint],
+        output_path: Path,
+    ) -> Path:
+        """Generate interactive Plotly visualization overlaying multiple models and global Pareto frontier."""
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        try:
+            import plotly.graph_objects as go
+
+            fig = go.Figure()
+
+            # Plot each campaign's points
+            for idx, (model_name, points) in enumerate(campaigns.items()):
+                color = cls.MODEL_PALETTES[idx % len(cls.MODEL_PALETTES)]
+                sorted_pts = sorted(points, key=lambda p: p.serving_memory_gb)
+
+                fig.add_trace(
+                    go.Scatter(
+                        x=[p.serving_memory_gb for p in sorted_pts],
+                        y=[p.domain_score for p in sorted_pts],
+                        mode="markers+lines",
+                        name=f"{model_name}",
+                        line=dict(color=color, width=2, dash="dash"),
+                        marker=dict(
+                            size=[max(p.total_cost_usd, 5.0) * 0.7 for p in sorted_pts],
+                            color=color,
+                            opacity=0.75,
+                        ),
+                        hovertext=[
+                            f"<b>{p.variant_label}</b><br>Model: {model_name}<br>Domain: {p.domain_score:.3f}<br>VRAM: {p.serving_memory_gb}GB<br>Latency: {p.serving_latency_ms}ms<br>Cost: ${p.total_cost_usd:.2f}"
+                            for p in sorted_pts
+                        ],
+                        hoverinfo="text",
+                    )
+                )
+
+            # Global Pareto frontier
+            global_opt = [p for p in global_points if p.is_pareto_optimal]
+            if global_opt:
+                sorted_global = sorted(global_opt, key=lambda p: p.serving_memory_gb)
+                fig.add_trace(
+                    go.Scatter(
+                        x=[p.serving_memory_gb for p in sorted_global],
+                        y=[p.domain_score for p in sorted_global],
+                        mode="markers+lines+text",
+                        name="🏆 Global Pareto Frontier",
+                        text=[p.variant_label.split(" (")[-1].replace(")", "") for p in sorted_global],
+                        textposition="top right",
+                        line=dict(color="#10b981", width=3),
+                        marker=dict(
+                            size=16,
+                            color="#10b981",
+                            symbol="star",
+                            line=dict(width=2, color="#ffffff"),
+                        ),
+                        hovertext=[
+                            f"<b>{p.variant_label} (GLOBAL OPTIMAL)</b><br>Model: {p.model_name}<br>Domain: {p.domain_score:.3f}<br>VRAM: {p.serving_memory_gb}GB<br>Latency: {p.serving_latency_ms}ms<br>Cap/$: {p.capability_per_dollar:.2f}"
+                            for p in sorted_global
+                        ],
+                        hoverinfo="text",
+                    )
+                )
+
+            fig.update_layout(
+                title="<b>ViForge Cross-Model Multi-Campaign Pareto Benchmark</b><br><sup>Cross-Architecture Evaluation: Accuracy vs Serving VRAM (Bubble Size = Total Cost)</sup>",
+                xaxis_title="Serving VRAM Footprint (GB) [Lower is Better]",
+                yaxis_title="Domain Benchmark Capability Score [Higher is Better]",
+                template="plotly_dark",
+                hovermode="closest",
+                paper_bgcolor="#0f172a",
+                plot_bgcolor="#1e293b",
+                font=dict(family="Inter, sans-serif", color="#f8fafc"),
+            )
+
+            fig.write_html(str(output_path), include_plotlyjs="cdn")
+            return output_path
+
+        except ImportError:
+            # Fallback simple HTML if plotly is not importable
+            html = f"""<!DOCTYPE html>
+<html>
+<head><title>ViForge Cross-Model Pareto Benchmark</title>
+<style>body {{ font-family: sans-serif; background: #0f172a; color: #f8fafc; padding: 20px; }} table {{ border-collapse: collapse; width: 100%; }} th, td {{ border: 1px solid #334155; padding: 8px 12px; text-align: left; }} th {{ background: #1e293b; }} tr.opt {{ background: #064e3b; font-weight: bold; }}</style>
+</head>
+<body>
+<h2>ViForge Cross-Model Multi-Campaign Pareto Benchmark</h2>
+<table>
+<tr><th>Model</th><th>Variant</th><th>Domain Score</th><th>VRAM (GB)</th><th>Latency (ms)</th><th>Cost ($)</th><th>Global Optimal</th></tr>
+{"".join(f'<tr class="{"opt" if p.is_pareto_optimal else ""}"><td>{p.model_name}</td><td>{p.variant_label}</td><td>{p.domain_score:.3f}</td><td>{p.serving_memory_gb}</td><td>{p.serving_latency_ms}</td><td>${p.total_cost_usd:.2f}</td><td>{"YES (GLOBAL)" if p.is_pareto_optimal else "NO"}</td></tr>' for p in global_points)}
+</table>
+</body></html>"""
+            output_path.write_text(html, encoding="utf-8")
+            return output_path
+
