@@ -18,8 +18,10 @@ from typing import Any, Dict, List, Optional
 
 try:
     import resource
+    HAS_RESOURCE = True
 except ImportError:
-    resource = None
+    resource = None  # type: ignore[assignment]
+    HAS_RESOURCE = False
 
 BLOCKED_MODULES = {
     "os",
@@ -75,34 +77,36 @@ def set_resource_limits() -> None:
     - 0 child processes (no fork bomb)
     - 1MB maximum file write limit
     """
-    if resource is None:
+    if not HAS_RESOURCE or resource is None:
         return
+
+    res_mod: Any = resource
 
     # Memory limit (256MB)
     try:
         mem_limit = 256 * 1024 * 1024
-        resource.setrlimit(resource.RLIMIT_AS, (mem_limit, mem_limit))
-    except (ValueError, getattr(resource, "error", Exception)):
+        res_mod.setrlimit(res_mod.RLIMIT_AS, (mem_limit, mem_limit))
+    except (ValueError, getattr(res_mod, "error", Exception)):
         pass
 
     # CPU time limit (30s)
     try:
-        resource.setrlimit(resource.RLIMIT_CPU, (30, 30))
-    except (ValueError, getattr(resource, "error", Exception)):
+        res_mod.setrlimit(res_mod.RLIMIT_CPU, (30, 30))
+    except (ValueError, getattr(res_mod, "error", Exception)):
         pass
 
     # Process limit (no fork)
     try:
-        if hasattr(resource, "RLIMIT_NPROC"):
-            resource.setrlimit(resource.RLIMIT_NPROC, (0, 0))
-    except (ValueError, getattr(resource, "error", Exception)):
+        if hasattr(res_mod, "RLIMIT_NPROC"):
+            res_mod.setrlimit(res_mod.RLIMIT_NPROC, (0, 0))
+    except (ValueError, getattr(res_mod, "error", Exception)):
         pass
 
     # File size limit (1MB)
     try:
         fsize_limit = 1024 * 1024
-        resource.setrlimit(resource.RLIMIT_FSIZE, (fsize_limit, fsize_limit))
-    except (ValueError, getattr(resource, "error", Exception)):
+        res_mod.setrlimit(res_mod.RLIMIT_FSIZE, (fsize_limit, fsize_limit))
+    except (ValueError, getattr(res_mod, "error", Exception)):
         pass
 
 

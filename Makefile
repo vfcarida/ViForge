@@ -28,3 +28,10 @@ lock:
 sbom:
 	python scripts/generate_sbom.py
 
+build:
+	python -m build
+
+check-dist:
+	twine check dist/*
+
+

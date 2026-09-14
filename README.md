@@ -200,16 +200,26 @@ Inspect local hardware, RAM, disk space, PyTorch, CUDA, and accelerator status:
 viforge doctor
 ```
 
-### 3. Run the DeepSeek V4 Pro SWE Experiment Campaign
+### 3. Run an Experiment Campaign
 
 Execute the complete end-to-end specialization pipeline (Profiling $\rightarrow$ Baseline $\rightarrow$ Specialization $\rightarrow$ Evaluation $\rightarrow$ Pareto Optimization $\rightarrow$ Reporting):
 
-```bash
-# Run full campaign (using deterministic mock engine for fast local validation)
-viforge run configs/experiments/deepseek_v4_pro_software_engineering.yaml --mock
+#### Track A: Instant 10-Second Offline Tour (Zero GPU required)
+Run the full 5-stage research campaign simulation using deterministic local fakes and AST verification without downloading model checkpoints or requiring external APIs:
 
-# Run on live GPU hardware with Hugging Face transformers / CUDA:
-viforge run configs/experiments/deepseek_v4_pro_software_engineering.yaml --live
+```bash
+viforge run configs/experiments/deepseek_v4_pro_software_engineering.yaml --mock
+```
+
+#### Track B: Real Open Weights Live Run (Hugging Face Hub)
+Fine-tune and evaluate a real open-weights model (`Qwen/Qwen2.5-Coder-1.5B-Instruct`) on your local GPU or CPU:
+
+```bash
+# Validate manifest schema
+viforge validate configs/experiments/qwen2.5_coder_1.5b_quickstart.yaml
+
+# Run live fine-tuning and evaluation
+viforge run configs/experiments/qwen2.5_coder_1.5b_quickstart.yaml --live
 ```
 
 ---

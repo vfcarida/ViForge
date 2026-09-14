@@ -309,7 +309,8 @@ class CompositeObservabilityCallback:
             f"stage/{metrics.stage_id}/cost_usd": metrics.estimated_stage_cost_usd,
         }
         self.wandb.log(stage_summary)
-        self.mlflow.log_metrics(stage_summary)
+        stage_summary_clean = {k: float(v) for k, v in stage_summary.items() if v is not None}
+        self.mlflow.log_metrics(stage_summary_clean)
 
     def on_experiment_end(self, summary: Optional[Dict[str, Any]] = None) -> None:
         """Called at experiment completion; logs final comparison metrics and table."""

@@ -7,6 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.2.0] - 2026-09-12
+
+### Added
+* Real open-weights live quickstart configuration for `Qwen/Qwen2.5-Coder-1.5B-Instruct` (`configs/experiments/qwen2.5_coder_1.5b_quickstart.yaml`).
+* Evol-Instruct synthetic data mutation strategies (`deepen_constraints`, `broaden_domain`, `add_reasoning_steps`, `concretize`) and self-play preference curating for reference-free alignment (ORPO & SimPO).
+* Preventive benchmark contamination screening for synthetic datasets.
+* Multi-GPU distributed memory profiler modeling DDP, ZeRO-1/2/3, FSDP2, and CPU offloading with automated Accelerate YAML and DeepSpeed JSON exports.
+* Enterprise cluster orchestration generators: Slurm HPC multi-node `.sbatch` (torchrun, Apptainer/Singularity) and Kubernetes KubeRay `RayJob` manifests.
+* Automated Hugging Face Hub Model Card generator with YAML frontmatter, hyperparameters, Wilson 95% CI deltas, Pareto badges, and ViPym compression recommendations.
+* Streamlit Studio web application expanded to 7 interactive tabs.
+* Standard Python entry-point plugin architecture (`viforge.methods` and `viforge.evaluators`).
+* Automated release workflow with Twine metadata validation and PyPI Trusted Publishing via GitHub OIDC.
+* Unit test for real LoRA autograd backward pass and parameter delta verification.
+
+### Changed
+* Hardened Mypy static type checking across all 85 source files by re-enabling `arg-type`, `assignment`, `call-arg`, and `misc`.
+* Replaced loose type ignores in `sandbox.py`, `callbacks.py`, `backends.py`, and `preparer.py`.
+
+---
+
 ## [0.1.0] - 2026-08-14
 
 ### Added

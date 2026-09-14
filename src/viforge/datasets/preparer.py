@@ -133,6 +133,7 @@ class DatasetPreparer:
         if not self.config.quality_filter:
             return records
 
+        q_filter: Any
         if self.config.domain in ("software_engineering", "code") or "code" in self.config.domain:
             q_filter = CodeQualityFilter(
                 min_length=self.config.min_length,
@@ -295,7 +296,7 @@ class DatasetPreparer:
 
         sanitized_records = []
         for r in records:
-            rec_copy = {}
+            rec_copy: Dict[str, Any] = {}
             for k, v in r.items():
                 if isinstance(v, str):
                     s = v

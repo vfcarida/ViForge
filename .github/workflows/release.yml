@@ -4,6 +4,12 @@ on:
   push:
     tags:
       - "v*.*.*"
+  workflow_dispatch:
+    inputs:
+      publish_to_pypi:
+        description: "Publish to PyPI"
+        type: boolean
+        default: false
 
 permissions:
   contents: write
@@ -21,19 +27,30 @@ jobs:
         with:
           python-version: "3.12"
 
-      - name: Install Build Tools
+      - name: Install Build Tools & Twine
         run: |
-          python -m pip install --upgrade pip build wheel
+          python -m pip install --upgrade pip build wheel twine
 
       - name: Build Source and Binary Distributions
         run: |
           python -m build
+
+      - name: Verify Distribution Metadata (Twine Check)
+        run: |
+          twine check dist/*
 
       - name: Compute SHA-256 Checksums
         run: |
           cd dist
           sha256sum * > SHA256SUMS
           cat SHA256SUMS
+
+      - name: Publish to PyPI (OIDC Trusted Publishing)
+        if: startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && github.event.inputs.publish_to_pypi == 'true')
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          skip-existing: true
+          verbose: true
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@c062e49d33b8a1c3d1f1c84cb634d0b134d19335 # v2.0.8
@@ -45,3 +62,4 @@ jobs:
           generate_release_notes: true
           draft: false
           prerelease: false
+

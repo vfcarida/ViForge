@@ -74,6 +74,65 @@ def test_mock_execution_paths(tmp_path: Path):
         assert metrics.total_parameters > 0
 
 
+@pytest.mark.unit
+def test_lora_real_autograd_gradient_flow():
+    """Verify real autograd backward pass and parameter updates on LoRA adapters."""
+    import torch
+    from peft import LoraConfig, get_peft_model
+
+    # 1. Tiny 2-layer causal language model in memory
+    config = AutoConfig.from_pretrained("gpt2")
+    config.n_layer = 2
+    config.n_head = 2
+    config.n_embd = 64
+    config.vocab_size = 500
+    base_model = AutoModelForCausalLM.from_config(config)
+
+    # 2. Attach LoRA adapter
+    lora_config = LoraConfig(
+        r=4,
+        lora_alpha=8,
+        target_modules=["c_attn"],
+        lora_dropout=0.0,
+        bias="none",
+        task_type="CAUSAL_LM",
+    )
+    lora_model = get_peft_model(base_model, lora_config)
+
+    # 3. Check parameter trainability
+    trainable_params = [p for p in lora_model.parameters() if p.requires_grad]
+    frozen_params = [p for p in lora_model.parameters() if not p.requires_grad]
+    assert len(trainable_params) > 0
+    assert len(frozen_params) > 0
+
+    # Capture initial weights of all LoRA parameters
+    initial_weights = [p.clone().detach() for p in trainable_params]
+
+    # 4. Forward pass
+    input_ids = torch.randint(0, 500, (2, 16))
+    outputs = lora_model(input_ids=input_ids, labels=input_ids)
+    loss = outputs.loss
+    assert loss is not None
+    assert loss.item() > 0.0
+
+    # 5. Backward pass
+    loss.backward()
+
+    # Verify gradients flowed into LoRA adapters (specifically lora_B, which has non-zero grad at step 0)
+    total_grad = sum(torch.sum(torch.abs(p.grad)).item() for p in trainable_params if p.grad is not None)
+    assert total_grad > 0.0, "LoRA parameters must receive non-zero gradients"
+
+    # 6. Optimizer step and parameter delta check
+    optimizer = torch.optim.AdamW(lora_model.parameters(), lr=1e-2)
+    optimizer.step()
+
+    total_delta = sum(
+        torch.sum(torch.abs(p - init_w)).item()
+        for p, init_w in zip(trainable_params, initial_weights)
+    )
+    assert total_delta > 0.0, "LoRA weights must be updated after optimizer step"
+
+
 @pytest.mark.gpu
 @pytest.mark.slow
 def test_lora_real_training(tmp_path: Path):

@@ -26,7 +26,7 @@ class MockInferenceBackend(BaseInferenceBackend):
 
     def __init__(self, fixed_completion: Optional[str] = None):
         self.model_loaded = False
-        self.adapter_path = None
+        self.adapter_path: Optional[str] = None
         self.fixed_completion = fixed_completion
 
     def load_model(self, model_path_or_id: str, adapter_path: Optional[str] = None) -> None:
@@ -93,8 +93,8 @@ class HuggingFaceInferenceBackend(BaseInferenceBackend):
 
     def __init__(self, device: str = "auto"):
         self.device = device
-        self.model = None
-        self.tokenizer = None
+        self.model: Any = None
+        self.tokenizer: Any = None
 
     def load_model(self, model_path_or_id: str, adapter_path: Optional[str] = None) -> None:
         import torch
@@ -197,8 +197,9 @@ class VLLMInferenceBackend(BaseInferenceBackend):
         self._dtype = dtype
         self._trust_remote_code = trust_remote_code
         self._engine_kwargs = engine_kwargs
-        self._llm = None
+        self._llm: Any = None
         self._model_id: Optional[str] = None
+        self._adapter_path: Optional[str] = None
 
     def load_model(self, model_path_or_id: str, adapter_path: Optional[str] = None) -> None:
         from vllm import LLM

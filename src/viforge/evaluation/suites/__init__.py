@@ -25,9 +25,36 @@ class EvaluatorRegistry:
             "gsm8k": GSM8KRetentionSuite,
             "arc_challenge": ARCChallengeRetentionSuite,
         }
+        self.discover_entrypoint_plugins()
 
     def register(self, name: str, suite_cls: Type) -> None:
         self._suites[name.lower()] = suite_cls
+
+    def discover_entrypoint_plugins(self) -> int:
+        """
+        Discovers and registers third-party benchmark plugins via standard Python entry points:
+        group = 'viforge.evaluators'
+        """
+        import importlib.metadata
+
+        count = 0
+        try:
+            entry_points = importlib.metadata.entry_points()
+            eps = (
+                entry_points.select(group="viforge.evaluators")
+                if hasattr(entry_points, "select")
+                else entry_points.get("viforge.evaluators", [])  # type: ignore[attr-defined]
+            )
+            for ep in eps:
+                try:
+                    suite_cls = ep.load()
+                    self.register(ep.name, suite_cls)
+                    count += 1
+                except Exception:
+                    pass
+        except Exception:
+            pass
+        return count
 
     def get(self, name: str):
         key = name.lower()

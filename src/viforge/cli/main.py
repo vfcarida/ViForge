@@ -815,7 +815,7 @@ def cli_distributed_profile(
 ):
     """Profile multi-GPU distributed VRAM partitioning and recommend optimal training topology."""
     from viforge.config.loader import ConfigLoader
-    from viforge.config.schemas import HardwareConfig
+    from viforge.config.schemas import HardwareConfig, HyperparametersConfig
     from viforge.training.profiler import ResourceProfiler
 
     manifest = ConfigLoader.load_manifest(config_path)
@@ -825,7 +825,7 @@ def cli_distributed_profile(
         vram_per_gpu_gb=manifest.hardware.vram_per_gpu_gb,
         compute_dtype=manifest.hardware.compute_dtype,
     )
-    hp = manifest.pipeline[0].hyperparameters if manifest.pipeline else None
+    hp = manifest.pipeline[0].hyperparameters if manifest.pipeline else HyperparametersConfig()
 
     rec = ResourceProfiler.recommend_distributed_strategy(manifest.model, hp, hw)
 

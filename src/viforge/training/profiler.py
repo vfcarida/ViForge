@@ -73,7 +73,10 @@ class ResourceProfiler:
 
         # Reference model overhead (Standard DPO requires frozen reference policy in memory;
         # Reference-free methods like ORPO, SimPO, KTO, and SFT require 0.0 GB reference overhead)
-        method_str = str(method.value if hasattr(method, "value") else (method or "")).lower()
+        if method is not None and hasattr(method, "value"):
+            method_str = str(method.value).lower()
+        else:
+            method_str = str(method or "").lower()
         if method_str == "dpo":
             ref_model_gb = weight_mem_gb
         else:

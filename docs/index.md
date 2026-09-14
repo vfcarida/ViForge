@@ -45,17 +45,19 @@
 ## Quickstart
 
 ```bash
-# Install ViForge
+# 1. Install ViForge
 pip install -e .
 
-# Run pre-flight health check
+# 2. Run pre-flight health check
 viforge doctor
 
-# Validate experiment configuration
-viforge validate configs/experiments/deepseek_v4_pro_software_engineering.yaml
+# 3. Choose your execution track:
 
-# Run full experimentation campaign
-viforge run configs/experiments/deepseek_v4_pro_software_engineering.yaml
+# Track A: Instant 10-second offline simulation (zero GPU required)
+viforge run configs/experiments/deepseek_v4_pro_software_engineering.yaml --mock
+
+# Track B: Live real open-weights fine-tuning (Qwen 2.5 Coder 1.5B Instruct)
+viforge run configs/experiments/qwen2.5_coder_1.5b_quickstart.yaml --live
 ```
 
 ---

@@ -181,7 +181,7 @@ class UnifiedParetoEngine:
         points = [base_point, spec_point]
 
         # 3. Downstream Compressed Variants (ViPym / AWQ)
-        default_compressions = [
+        default_compressions: List[Dict[str, Any]] = [
             {
                 "type": "compressed_smoothquant_w8a8",
                 "label": "Specialist + SmoothQuant W8A8",
@@ -194,9 +194,9 @@ class UnifiedParetoEngine:
             {
                 "type": "compressed_autoround_w4a16",
                 "label": "Specialist + AutoRound W4A16",
-                "domain_score": specialized_domain_score * 0.978,
-                "retention_score": specialized_retention_score * 0.988,
-                "compression_cost": 0.60,
+                "domain_score": specialized_domain_score * 0.988,
+                "retention_score": specialized_retention_score * 0.991,
+                "compression_cost": 0.35,
                 "memory_gb": 7.2,
                 "latency_ms": 85.0,
             },
@@ -223,13 +223,24 @@ class UnifiedParetoEngine:
                 "label": "Specialist + AWQ W4A16",
                 "domain_score": specialized_domain_score * 0.974,
                 "retention_score": specialized_retention_score * 0.985,
-                "compression_cost": 0.40,
-                "memory_gb": 7.3,
-                "latency_ms": 84.0,
+                "compression_cost": 0.15,
+                "memory_gb": 7.5,
+                "latency_ms": 42.0,
+            },
+            {
+                "type": "compressed_gguf_q4_k_m",
+                "label": "Specialist + GGUF Q4_K_M (Ollama)",
+                "domain_score": specialized_domain_score * 0.965,
+                "retention_score": specialized_retention_score * 0.980,
+                "compression_cost": 0.02,
+                "memory_gb": 8.0,
+                "latency_ms": 45.0,
             },
         ]
 
-        variants_to_build = custom_variants if custom_variants is not None else default_compressions
+        variants_to_build: List[Dict[str, Any]] = (
+            custom_variants if custom_variants is not None else default_compressions
+        )
 
         for var in variants_to_build:
             d_score = float(var["domain_score"])

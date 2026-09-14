@@ -84,6 +84,29 @@ class ModelRegistry:
                 pricing=BasePricingConfig(prompt_usd_per_1m=0.12, completion_usd_per_1m=0.24),
             )
         )
+        # Qwen 2.5 Coder 1.5B Instruct
+        self.register(
+            ModelConfig(
+                name="Qwen2.5-Coder-1.5B-Instruct",
+                hf_hub_id="Qwen/Qwen2.5-Coder-1.5B-Instruct",
+                revision="main",
+                model_type=ModelType.CAUSAL_LM,
+                total_parameters=1.54,
+                active_parameters=1.54,
+                context_window=32768,
+                target_modules=[
+                    "q_proj",
+                    "k_proj",
+                    "v_proj",
+                    "o_proj",
+                    "gate_proj",
+                    "up_proj",
+                    "down_proj",
+                ],
+                expected_license="Apache-2.0",
+                pricing=BasePricingConfig(prompt_usd_per_1m=0.04, completion_usd_per_1m=0.08),
+            )
+        )
 
     def register(self, config: ModelConfig) -> None:
         self._models[config.name.lower()] = config
