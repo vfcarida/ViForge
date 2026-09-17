@@ -3,7 +3,7 @@ ViForge Evaluation Harness: deterministic orchestrator comparing baseline vs spe
 """
 
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple, Union
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 from viforge.config.schemas import (
     BenchmarkItemConfig,
@@ -113,26 +113,38 @@ class EvaluationHarness:
             f"{len(retention_items)} retention benchmarks (max_problems={max_p})."
         )
 
+        import inspect
+
         for b_item in domain_items:
             suite = evaluator_registry.get(b_item.name)
-            res = suite.evaluate(
-                inference_backend=inference_backend,
-                output_dir=output_dir / "domain" / b_item.name,
-                sampling_params=self.config.sampling,
-                timeout_seconds=b_item.timeout_seconds,
-                limit=max_p,
-            )
+            eval_kwargs: Dict[str, Any] = {
+                "inference_backend": inference_backend,
+                "output_dir": output_dir / "domain" / b_item.name,
+                "sampling_params": self.config.sampling,
+                "timeout_seconds": b_item.timeout_seconds,
+                "limit": max_p,
+            }
+            if getattr(self.config, "strict_mode", False):
+                sig = inspect.signature(suite.evaluate)
+                if "strict_mode" in sig.parameters:
+                    eval_kwargs["strict_mode"] = True
+            res = suite.evaluate(**eval_kwargs)
             domain_results.append(res)
 
         for r_item in retention_items:
             suite = evaluator_registry.get(r_item.name)
-            res = suite.evaluate(
-                inference_backend=inference_backend,
-                output_dir=output_dir / "retention" / r_item.name,
-                sampling_params=self.config.sampling,
-                timeout_seconds=r_item.timeout_seconds,
-                limit=max_p,
-            )
+            eval_kwargs = {
+                "inference_backend": inference_backend,
+                "output_dir": output_dir / "retention" / r_item.name,
+                "sampling_params": self.config.sampling,
+                "timeout_seconds": r_item.timeout_seconds,
+                "limit": max_p,
+            }
+            if getattr(self.config, "strict_mode", False):
+                sig = inspect.signature(suite.evaluate)
+                if "strict_mode" in sig.parameters:
+                    eval_kwargs["strict_mode"] = True
+            res = suite.evaluate(**eval_kwargs)
             retention_results.append(res)
 
         return domain_results, retention_results

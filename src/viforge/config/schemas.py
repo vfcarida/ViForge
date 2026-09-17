@@ -146,6 +146,9 @@ class DatasetConfig(BaseModel):
     decontaminate: bool = Field(True, description="Enable 10-gram benchmark contamination scan")
     scan_secrets: bool = Field(True, description="Enable automated secrets scanning and redaction")
     scan_pii: bool = Field(True, description="Enable automated PII scanning and redaction")
+    chunk_size: Optional[int] = Field(
+        None, ge=1, description="Optional chunk size for batch/streaming ingestion of large files"
+    )
 
 
 class DomainPresetDatasetItem(BaseModel):

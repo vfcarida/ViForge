@@ -8,9 +8,10 @@ Expected Dataset Formats:
   - Required Columns: `prompt: str` (reward calculated from verifiable unit tests/assertions)
 """
 
+import re
 import time
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any, Optional, Tuple
 
 import torch
 from viforge.config.schemas import StageMetrics, TrainingStageConfig
@@ -186,6 +187,84 @@ class DPOMethod(BaseTrainingMethod):
         return metrics
 
 
+def extract_reasoning_and_code(text: str) -> Tuple[Optional[str], str]:
+    """
+    Extract reasoning traces inside <think>...</think> and isolate the executable code.
+    Also extracts code blocks inside markdown code fences (```python ... ```).
+    """
+    reasoning_trace: Optional[str] = None
+    cleaned_text = text
+
+    # Extract think block if present
+    think_pattern = re.compile(r"<think>(.*?)</think>", re.DOTALL)
+    match = think_pattern.search(text)
+    if match:
+        reasoning_trace = match.group(1).strip()
+        cleaned_text = text[match.end() :].strip()
+    elif "<think>" in text:
+        parts = text.split("<think>", 1)
+        reasoning_trace = parts[1].strip()
+        cleaned_text = parts[0].strip()
+
+    # Extract code from markdown code fences if present
+    fences = re.findall(r"```(?:python)?\s*\n(.*?)\n```", cleaned_text, flags=re.DOTALL)
+    if fences:
+        executable_code = max(fences, key=len).strip()
+    else:
+        executable_code = cleaned_text.strip()
+
+    return reasoning_trace, executable_code
+
+
+def compute_grpo_reward(
+    completion: str,
+    prompt: str = "",
+    test_cases: str = "",
+    sandbox: Optional[Any] = None,
+    max_length_soft_cap: int = 4096,
+) -> float:
+    """
+    Compute reward for GRPO completion considering syntax validity, unit test execution,
+    reasoning trace structure (<think>), and length penalty regularization.
+    """
+    reasoning_trace, code = extract_reasoning_and_code(completion)
+
+    # 1. Syntax verification
+    try:
+        compile(code, "<string>", "exec")
+    except Exception:
+        return 0.0
+
+    # 2. Execution / Unit Test reward
+    base_reward = 1.0
+    if test_cases and test_cases.strip():
+        if sandbox is not None:
+            try:
+                res = sandbox.execute_snippet(
+                    code_string=code,
+                    test_assertions=test_cases,
+                    timeout_seconds=5,
+                )
+                base_reward = 1.0 if res.get("passed", False) else 0.3
+            except Exception:
+                base_reward = 0.3
+        else:
+            base_reward = 0.5
+    else:
+        base_reward = 1.0
+
+    # 3. Chain-of-thought structure bonus for explicit <think> reasoning trace
+    cot_bonus = 0.1 if (reasoning_trace and len(reasoning_trace) >= 15) else 0.0
+
+    # 4. Length penalty regularization for excessive verbosity
+    comp_len = len(completion)
+    excess = max(0, comp_len - max_length_soft_cap)
+    length_penalty = min(0.3, (excess / 4000.0) * 0.3)
+
+    final_reward = max(0.0, min(1.5, base_reward + cot_bonus - length_penalty))
+    return round(final_reward, 4)
+
+
 class GRPOMethod(BaseTrainingMethod):
     """
     Group Relative Policy Optimization (GRPO) using verifiable unit test rewards.
@@ -271,24 +350,13 @@ class GRPOMethod(BaseTrainingMethod):
             test_cases = kwargs.get("test") or kwargs.get("test_cases") or [""] * len(completions)
 
             for comp, prompt, tests in zip(completions, prompts, test_cases):
-                try:
-                    compile(comp, "<string>", "exec")
-                except Exception:
-                    rewards.append(0.0)
-                    continue
-
-                if tests:
-                    try:
-                        res = sandbox.execute_snippet(
-                            code_string=comp,
-                            test_assertions=str(tests),
-                            timeout_seconds=5,
-                        )
-                        rewards.append(1.0 if res.get("passed", False) else 0.3)
-                    except Exception:
-                        rewards.append(0.3)
-                else:
-                    rewards.append(1.0)
+                r = compute_grpo_reward(
+                    completion=comp,
+                    prompt=prompt,
+                    test_cases=str(tests),
+                    sandbox=sandbox,
+                )
+                rewards.append(r)
             return rewards
 
         try:

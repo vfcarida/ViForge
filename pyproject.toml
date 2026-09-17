@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "viforge"
-version = "0.3.0"
+version = "0.4.0"
 description = "ViForge: Forging Small Models into Domain Specialists — A Systematic Post-Training & Evaluation Framework"
 readme = "README.md"
 requires-python = ">=3.10"

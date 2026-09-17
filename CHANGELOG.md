@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.4.0] - 2026-09-17
+
+### Added
+* **Live Model Training Execution in ExperimentRunner**: Connected `HuggingFaceModelAdapter` instantiation in `ExperimentRunner.execute()` when running live (`backend_type != "mock"`), executing genuine forward/backward autograd passes, parameter updates, and saving verified adapter weights to disk.
+* **Strict Verification Mode for SWE-bench Lite**: Added `strict_mode` compliance to `SWEBenchSuite.evaluate()`. Enforces container execution for patch verification and prevents 100% false-positive heuristic pass rates when Docker is absent.
+* **Automated Headless Streamlit UI Test Suite**: Added `tests/unit/test_ui_apptest.py` powered by `streamlit.testing.v1.AppTest`, achieving automated regression testing across all 8 Studio tabs without browser dependencies.
+* **Hardened Cross-Platform Subprocess Sandbox**: Added Windows process-tree cleanup (`CREATE_NO_WINDOW`, process tree termination) in `HardenedSandbox` to prevent zombie subprocesses on Windows.
+* **Chunked & Streaming Dataset Preparation**: Added batch-wise chunk processing in `DatasetPreparer` to prevent RAM exhaustion on large corpora.
+* **GRPO Reasoning Traces & Length Penalties**: Enhanced `GRPOMethod` with `<think> ... </think>` reasoning tag extraction and token length regularization.
+* **Unified Documentation Index**: Integrated all 15 previously orphaned ADR, research, audit, and architecture documents into `mkdocs.yml` navigation with zero build warnings.
+* **Pre-Commit Static Type Enforcement**: Added Mypy hook to `.pre-commit-config.yaml`.
+
+---
+
 ## [0.3.0] - 2026-09-14
 
 ### Added

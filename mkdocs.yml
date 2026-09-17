@@ -46,12 +46,21 @@ nav:
   - Home: index.md
   - Architecture:
       - System Overview: architecture/README.md
+      - Current Architecture: architecture/CURRENT_ARCHITECTURE.md
+      - Target Architecture: architecture/TARGET_ARCHITECTURE.md
       - Unified Pareto & Studio: architecture/unified_pareto.md
       - Synthetic Data & Self-Play: architecture/synthetic_data.md
       - Distributed Training & Memory Profiler: architecture/distributed_training.md
       - Cluster & Cloud Orchestration: architecture/orchestration.md
       - Plugin Architecture & Extensibility: architecture/plugins.md
+      - Architecture Decisions:
+          - ADR-001 Src Layout & Plugin Taxonomy: architecture/decisions/ADR-001-src-layout-and-plugin-taxonomy.md
+          - ADR-002 Pareto Frontier & Cost Modeling: architecture/decisions/ADR-002-pareto-frontier-and-cost-modeling.md
+  - Research & Literature:
+      - Research Report: research/RESEARCH_REPORT.md
       - Reference-Free Alignment (ORPO & SimPO): research/reference_free_alignment.md
+      - Reference Matrix: research/REFERENCE_MATRIX.md
+      - Related Projects: research/RELATED_PROJECTS.md
   - Case Studies:
       - DeepSeek V4 Pro SWE: case-studies/deepseek-v4-pro-swe.md
   - Integrations:
@@ -59,5 +68,13 @@ nav:
       - Hugging Face Hub: integrations/huggingface.md
   - Quality & Testing:
       - Testing Guide: testing/README.md
-  - Audit & Plan:
-      - Deep Repository Audit: audit/README.md
+      - Testing Strategy: testing/TEST_STRATEGY.md
+  - Audit & Governance:
+      - Audit Overview: audit/README.md
+      - Repository Audit: audit/REPOSITORY_AUDIT.md
+      - Repository Inventory: audit/REPOSITORY_INVENTORY.md
+      - Analysis Coverage: audit/ANALYSIS_COVERAGE.md
+      - Baseline Report: audit/BASELINE_REPORT.md
+      - Traceability Matrix: audit/TRACEABILITY_MATRIX.md
+      - Verification Report: audit/VERIFICATION_REPORT.md
+      - Implementation Plan: implementation/IMPLEMENTATION_PLAN.md

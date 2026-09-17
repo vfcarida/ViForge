@@ -10,6 +10,7 @@ import plotly.graph_objects as go
 import streamlit as st
 import yaml
 
+from viforge import __version__
 from viforge.analysis.unified_pareto import MultiCampaignParetoComparator, UnifiedParetoEngine
 from viforge.config.schemas import HardwareConfig, HyperparametersConfig, ModelConfig
 from viforge.integrations.vipym import (
@@ -110,7 +111,7 @@ with st.sidebar:
         st.warning("○ ViPym Integration: Standalone/Mock")
 
     st.markdown("---")
-    st.caption("ViForge v0.1.0 • Antigravity Enterprise Engine")
+    st.caption(f"ViForge v{__version__} • Antigravity Enterprise Engine")
 
 # Header
 st.markdown(

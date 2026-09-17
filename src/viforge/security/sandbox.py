@@ -269,36 +269,57 @@ class HardenedSandbox:
                     else None
                 )
 
-                result = subprocess.run(
+                creationflags = 0
+                if sys.platform == "win32":
+                    creationflags = getattr(subprocess, "CREATE_NO_WINDOW", 0)
+
+                proc = subprocess.Popen(
                     [sys.executable, str(script_path)],
-                    capture_output=True,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
                     text=True,
-                    timeout=timeout,
                     env=clean_env,
                     preexec_fn=preexec,
+                    creationflags=creationflags,
                 )
-                elapsed = time.time() - start_t
-                return {
-                    "passed": result.returncode == 0,
-                    "returncode": result.returncode,
-                    "stdout": result.stdout[:2000],
-                    "stderr": result.stderr[:2000],
-                    "timeout": False,
-                    "execution_time_seconds": round(elapsed, 3),
-                    "backend": "subprocess",
-                }
-
-            except subprocess.TimeoutExpired:
-                elapsed = time.time() - start_t
-                return {
-                    "passed": False,
-                    "returncode": -1,
-                    "stdout": "",
-                    "stderr": f"Execution timed out after {timeout} seconds.",
-                    "timeout": True,
-                    "execution_time_seconds": round(elapsed, 3),
-                    "backend": "subprocess",
-                }
+                try:
+                    stdout, stderr = proc.communicate(timeout=timeout)
+                    elapsed = time.time() - start_t
+                    return {
+                        "passed": proc.returncode == 0,
+                        "returncode": proc.returncode,
+                        "stdout": stdout[:2000] if stdout else "",
+                        "stderr": stderr[:2000] if stderr else "",
+                        "timeout": False,
+                        "execution_time_seconds": round(elapsed, 3),
+                        "backend": "subprocess",
+                    }
+                except subprocess.TimeoutExpired:
+                    if sys.platform == "win32":
+                        try:
+                            subprocess.run(
+                                ["taskkill", "/F", "/T", "/PID", str(proc.pid)],
+                                capture_output=True,
+                                timeout=5,
+                            )
+                        except Exception:
+                            proc.kill()
+                    else:
+                        proc.kill()
+                    try:
+                        proc.communicate(timeout=2)
+                    except Exception:
+                        pass
+                    elapsed = time.time() - start_t
+                    return {
+                        "passed": False,
+                        "returncode": -1,
+                        "stdout": "",
+                        "stderr": f"Execution timed out after {timeout} seconds.",
+                        "timeout": True,
+                        "execution_time_seconds": round(elapsed, 3),
+                        "backend": "subprocess",
+                    }
             except Exception as e:
                 elapsed = time.time() - start_t
                 return {

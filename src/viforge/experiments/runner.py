@@ -107,15 +107,35 @@ class ExperimentRunner:
         )
         return base_domain_res + base_ret_res
 
-    def run_training_stages(self) -> Dict[str, Any]:
+    def run_training_stages(
+        self,
+        model: Optional[Any] = None,
+        tokenizer: Optional[Any] = None,
+        live: bool = False,
+    ) -> Dict[str, Any]:
         ordered_stages = StageDAGResolver.resolve_execution_order(self.manifest.pipeline)
         results: Dict[str, Any] = {}
+
+        if live and model is None:
+            try:
+                from viforge.models.registry import model_registry
+
+                adapter = model_registry.get_adapter(self.manifest.model.hf_hub_id)
+                model = adapter.load_base_model()
+                tokenizer = adapter.load_tokenizer()
+            except Exception as e:
+                logger.warning(f"Could not load live model for training: {e}")
+                if getattr(self.manifest, "strict_mode", False):
+                    raise StrictExecutionError(
+                        f"Strict mode enabled: failed to load live model: {e}"
+                    )
+
         for stage in ordered_stages:
             logger.info(f"Executing stage '{stage.stage_id}' ({stage.method})")
             trainer_method = method_registry.get(stage.method.value)
             metrics = trainer_method.execute_stage(
-                model=None,
-                tokenizer=None,
+                model=model,
+                tokenizer=tokenizer,
                 train_data_path=self.work_dir / "data" / "train.parquet",
                 eval_data_path=None,
                 stage_config=stage,
@@ -271,6 +291,38 @@ class ExperimentRunner:
         stage_metrics_list: list[StageMetrics] = []
         total_training_cost = 0.0
 
+        live_model: Optional[Any] = None
+        live_tokenizer: Optional[Any] = None
+        if backend_type != "mock":
+            try:
+                from viforge.models.registry import model_registry
+
+                adapter = model_registry.get_adapter(self.manifest.model.hf_hub_id)
+                quant = getattr(self.manifest.pipeline[0].hyperparameters, "quantization", None)
+                quant_val = (
+                    quant.value if quant and hasattr(quant, "value") else str(quant or "none")
+                )
+                quant_str = (
+                    "nf4"
+                    if "nf4" in quant_val.lower()
+                    else "int8"
+                    if "8" in quant_val.lower()
+                    else None
+                )
+                live_model = adapter.load_base_model(quantization=quant_str)
+                live_tokenizer = adapter.load_tokenizer()
+                logger.info(
+                    f"Loaded live model '{self.manifest.model.hf_hub_id}' for training execution."
+                )
+            except Exception as e:
+                logger.warning(
+                    f"Could not load live model for training: {e}. Falling back to simulation."
+                )
+                if getattr(self.manifest, "strict_mode", False):
+                    raise StrictExecutionError(
+                        f"Strict mode enabled: failed to load live model for training: {e}"
+                    )
+
         for stage in ordered_stages:
             logger.info(f"--- Step 2: Executing Stage '{stage.stage_id}' ({stage.method}) ---")
             trainer_method = method_registry.get(stage.method.value)
@@ -286,8 +338,8 @@ class ExperimentRunner:
             )
 
             metrics = trainer_method.execute_stage(
-                model=None,
-                tokenizer=None,
+                model=live_model,
+                tokenizer=live_tokenizer,
                 train_data_path=self.work_dir / "data" / "train.parquet",
                 eval_data_path=None,
                 stage_config=stage,

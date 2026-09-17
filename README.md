@@ -5,12 +5,12 @@
 **An End-to-End Post-Training, Evaluation & Pareto-Optimality Platform**
 
 [![Python 3.10+](https://img.shields.io/badge/python-3.10%20%7C%203.11%20%7C%203.12-blue.svg)](https://www.python.org/downloads/)
-[![PyPI version](https://img.shields.io/badge/pypi-v0.2.0-blue.svg)](https://pypi.org/project/viforge/)
+[![PyPI version](https://img.shields.io/badge/pypi-v0.4.0-blue.svg)](https://pypi.org/project/viforge/)
 [![PyTorch 2.0+](https://img.shields.io/badge/PyTorch-2.0%2B-ee4c2c.svg)](https://pytorch.org/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![CI Status](https://img.shields.io/badge/CI-Passing-brightgreen.svg)]()
 [![Code Style: Ruff](https://img.shields.io/badge/code%20style-ruff-000000.svg)](https://github.com/astral-sh/ruff)
-[![Tests: 166/166 Passed](https://img.shields.io/badge/tests-166%2F166%20passed-success.svg)]()
+[![Tests: 199/199 Passed](https://img.shields.io/badge/tests-199%2F199%20passed-success.svg)]()
 [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/vfcarida/ViForge/blob/main/notebooks/quickstart_colab.ipynb)
 [![Deployment: GGUF / Ollama / vLLM](https://img.shields.io/badge/deployment-GGUF%20%7C%20Ollama%20%7C%20vLLM-purple.svg)]()
 

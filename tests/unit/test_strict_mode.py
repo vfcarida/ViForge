@@ -67,3 +67,23 @@ def test_non_strict_mode_succeeds_on_mock(tmp_path: Path):
 
     results = runner.run_baseline_evaluation(backend_type="mock", limit=2)
     assert len(results) > 0
+
+
+def test_strict_mode_swe_bench_raises_when_no_docker(tmp_path: Path, monkeypatch):
+    """Verify that SWEBenchSuite raises StrictExecutionError when docker is absent in strict mode."""
+    from viforge.config.schemas import SamplingParams
+    from viforge.evaluation.suites.swe_bench import SWEBenchSuite
+    from viforge.inference.backends import MockInferenceBackend
+
+    suite = SWEBenchSuite()
+    monkeypatch.setattr(suite.sandbox, "is_docker_available", lambda: False)
+    backend = MockInferenceBackend()
+
+    with pytest.raises(StrictExecutionError, match="requires a reachable Docker daemon"):
+        suite.evaluate(
+            inference_backend=backend,
+            output_dir=tmp_path,
+            sampling_params=SamplingParams(),
+            limit=2,
+            strict_mode=True,
+        )

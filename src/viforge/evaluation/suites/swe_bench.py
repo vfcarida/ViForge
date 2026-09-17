@@ -166,6 +166,7 @@ class SWEBenchSuite:
         sampling_params: SamplingParams,
         timeout_seconds: int = 60,
         limit: Optional[int] = None,
+        strict_mode: bool = False,
     ) -> BenchmarkResult:
         start_time = time.time()
         output_dir.mkdir(parents=True, exist_ok=True)
@@ -178,8 +179,16 @@ class SWEBenchSuite:
         eval_mode = "container_execution" if docker_available else "syntax_and_patch_validation"
         mock_or_heuristic = not docker_available
 
+        if strict_mode and not docker_available:
+            from viforge.experiments.runner import StrictExecutionError
+
+            raise StrictExecutionError(
+                "Strict execution mode is enabled: SWE-bench Lite requires a reachable Docker daemon for execution verification."
+            )
+
         resolved = 0
         valid_patches = 0
+        verified_count = 0
         for prob, comp in zip(test_problems, completions):
             patch_analysis = parse_and_validate_unified_diff(comp)
             if patch_analysis["is_valid"]:
@@ -188,7 +197,9 @@ class SWEBenchSuite:
                     res = self._execute_patch_container(prob, comp, timeout_seconds)
                     if res.get("passed", False):
                         resolved += 1
+                        verified_count += 1
                 else:
+                    # Non-strict syntax fallback: valid unified diff patch format
                     resolved += 1
 
         total = len(test_problems)
@@ -196,8 +207,8 @@ class SWEBenchSuite:
         elapsed = time.time() - start_time
 
         logger.info(
-            f"SWE-bench evaluation ({eval_mode}): {resolved}/{total} resolved "
-            f"({pass_rate:.1%}, {valid_patches} valid unified diff patches)."
+            f"SWE-bench evaluation ({eval_mode}): {resolved}/{total} passed "
+            f"({pass_rate:.1%}, {valid_patches} syntax-valid patches, {verified_count} container-verified)."
         )
 
         return BenchmarkResult(
@@ -211,7 +222,9 @@ class SWEBenchSuite:
                 "resolved_rate_pct": round(pass_rate * 100.0, 2),
                 "evaluation_mode": eval_mode,
                 "mock_or_heuristic": mock_or_heuristic,
+                "is_verified": docker_available,
                 "syntax_valid_patches": valid_patches,
+                "verified_patches": verified_count,
                 "strict_patch_validation": True,
             },
         )

@@ -3,10 +3,11 @@ ViForge Domain-Agnostic Dataset Preparation Pipeline.
 Ingests, filters, deduplicates, and standardizes domain datasets for SFT, DPO, GRPO, and CPT.
 """
 
+import hashlib
 import json
 import random
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, Iterator, List, Optional, Set, Union
 import yaml
 
 from viforge.config.schemas import DatasetConfig, DomainPresetConfig, DomainPresetDatasetItem
@@ -378,7 +379,89 @@ class DatasetPreparer:
         )
         return formatted
 
+    def prepare_chunked(
+        self, chunk_size: Optional[int] = None
+    ) -> Iterator[List[Dict[str, Any]]]:
+        """
+        Execute streaming preparation pipeline in chunks to prevent memory exhaustion.
+        Yields batches of fully processed, filtered, sanitized, and formatted records.
+        """
+        c_size = chunk_size or getattr(self.config, "chunk_size", None) or 1000
+        source_path = Path(self.config.source)
+
+        stream: Iterator[List[Dict[str, Any]]]
+        if source_path.exists():
+            stream = DatasetAdapter.stream_local_records(source_path, chunk_size=c_size)
+        else:
+            full_records = self._load_source()
+
+            def _in_memory_chunks() -> Iterator[List[Dict[str, Any]]]:
+                for i in range(0, len(full_records), c_size):
+                    yield full_records[i : i + c_size]
+
+            stream = _in_memory_chunks()
+
+        seen_exact_hashes: Set[str] = set()
+        total_processed = 0
+
+        for chunk in stream:
+            if not chunk:
+                continue
+            filtered = self._apply_quality_filters(chunk)
+            sanitized = self._scan_and_redact_secrets_and_pii(filtered)
+
+            if self.config.dedup:
+                chunk_to_dedup = []
+                for r in sanitized:
+                    text_val = str(r.get("text", r.get("prompt", r.get("instruction", str(r)))))
+                    h = hashlib.sha256(text_val.strip().encode("utf-8")).hexdigest()
+                    if h not in seen_exact_hashes:
+                        seen_exact_hashes.add(h)
+                        chunk_to_dedup.append(r)
+                deduped = self._deduplicate(chunk_to_dedup)
+            else:
+                deduped = sanitized
+
+            decontaminated = self._decontaminate(deduped)
+            formatted = self._format_for_technique(decontaminated)
+            total_processed += len(formatted)
+            if formatted:
+                yield formatted
+
+        logger.info(
+            f"Chunked dataset preparation complete: yielded {total_processed} total records in chunks."
+        )
+
     def save(self, output_path: Union[str, Path]) -> Path:
         """Prepare dataset and save to file."""
+        if getattr(self.config, "chunk_size", None):
+            return self.save_chunked(output_path)
         records = self.prepare()
         return DatasetAdapter.save_records(records, Path(output_path))
+
+    def save_chunked(
+        self, output_path: Union[str, Path], chunk_size: Optional[int] = None
+    ) -> Path:
+        """
+        Stream prepared records incrementally to disk (JSONL or Parquet), avoiding large memory footprints.
+        """
+        out_p = Path(output_path)
+        out_p.parent.mkdir(parents=True, exist_ok=True)
+        if out_p.exists():
+            out_p.unlink()
+
+        c_size = chunk_size or getattr(self.config, "chunk_size", None) or 1000
+        suffix = out_p.suffix.lower()
+
+        if suffix in [".parquet", ".pq"]:
+            all_records: List[Dict[str, Any]] = []
+            for chunk in self.prepare_chunked(chunk_size=c_size):
+                all_records.extend(chunk)
+            return DatasetAdapter.save_records(all_records, out_p)
+        else:
+            count = 0
+            for chunk in self.prepare_chunked(chunk_size=c_size):
+                DatasetAdapter.append_records_jsonl(chunk, out_p)
+                count += len(chunk)
+            logger.info(f"Stream-saved {count} records to {out_p}")
+            return out_p
